@@ -1,0 +1,32 @@
+# macOS 系统文件
+.DS_Store
+*.DS_Store
+
+# 敏感/无关文件
+com.xray.proxy.plist
+finance.html
+hello.py
+
+# 构建临时文件
+_buildb/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+dist/
+build/
+
+# IDE 配置
+.idea/
+*.swp
+*.swo
+
+# 日志
+*.log

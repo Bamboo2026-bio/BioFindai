@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BioFin智投引擎 · 模块6：垂直大模型微调</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; background:#0f2027; color:#e0e0e0; min-height:100vh; }
+
+/* ===== 顶部导航 ===== */
+.navbar { background:rgba(0,0,0,.5); border-bottom:1px solid rgba(255,255,255,.08); padding:14px 30px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; backdrop-filter:blur(10px); }
+.navbar .logo { font-size:20px; font-weight:800; color:#ffd700; }
+.navbar .logo span { color:#00ff88; }
+.navbar .nav-right { display:flex; gap:16px; align-items:center; }
+.navbar .nav-link { color:#9ca3af; font-size:13px; cursor:pointer; padding:6px 14px; border-radius:6px; transition:all .2s; }
+.navbar .nav-link:hover { color:#fff; background:rgba(255,255,255,.08); }
+.navbar .nav-link.active { color:#ffd700; background:rgba(255,215,0,.1); }
+.navbar .module-badge { background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; font-size:11px; font-weight:800; padding:4px 12px; border-radius:20px; letter-spacing:1px; }
+
+/* ===== 主容器 ===== */
+.container { max-width:1200px; margin:0 auto; padding:24px 24px 60px; }
+
+/* ===== 模块头部 ===== */
+.module-header { background:linear-gradient(135deg,#0f2027,#203a43,#2c5364); border-radius:16px; padding:32px 36px; margin-bottom:24px; position:relative; overflow:hidden; }
+.module-header::after { content:""; position:absolute; right:-40px; top:-40px; width:180px; height:180px; border-radius:50%; background:rgba(255,215,0,.06); }
+.module-header .mh-tag { display:inline-block; background:rgba(255,215,0,.15); color:#ffd700; border:1px solid rgba(255,215,0,.4); padding:3px 12px; border-radius:20px; font-size:12px; margin-bottom:12px; letter-spacing:1px; }
+.module-header h1 { font-size:26px; font-weight:800; color:#fff; margin-bottom:8px; }
+.module-header h1 span { color:#ffd700; }
+.module-header p { color:#cbd5e1; font-size:14px; max-width:700px; }
+.module-header .mh-meta { display:flex; gap:20px; margin-top:16px; flex-wrap:wrap; font-size:12px; color:#94a3b8; }
+.module-header .mh-meta b { color:#fff; }
+
+/* ===== 卡片 ===== */
+.card { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:24px 28px; margin-bottom:24px; }
+.card h2 { font-size:18px; font-weight:700; color:#fff; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+.card h2 .num { background:#ffd700; color:#0f2027; width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.card h2 .sub { font-size:12px; color:#6b7280; font-weight:400; }
+.card .desc { color:#9ca3af; font-size:13.5px; margin-bottom:16px; line-height:1.7; }
+.card .desc b { color:#e0e0e0; }
+
+/* ===== 微调统计 ===== */
+.ft-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:20px; }
+.ft-stat { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:16px; text-align:center; }
+.ft-stat .fs-value { font-size:28px; font-weight:800; color:#ffd700; }
+.ft-stat .fs-value span { font-size:14px; color:#6b7280; font-weight:400; }
+.ft-stat .fs-label { font-size:12px; color:#9ca3af; margin-top:4px; }
+
+/* ===== 微调流程 ===== */
+.ft-flow { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:24px; }
+.ft-step { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:16px; text-align:center; position:relative; }
+.ft-step .fs-num { position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:#ffd700; color:#0f2027; width:24px; height:24px; border-radius:50%; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.ft-step .fs-icon { font-size:28px; margin-bottom:8px; margin-top:6px; }
+.ft-step .fs-name { font-size:14px; font-weight:700; color:#fff; }
+.ft-step .fs-desc { font-size:11px; color:#6b7280; margin-top:4px; }
+
+/* ===== 微调内容 ===== */
+.ft-content { display:none; }
+.ft-content.active { display:block; animation:fadeIn .3s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+/* 微调导航 */
+.ft-nav { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:24px; }
+.ft-nav-item { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:16px; cursor:pointer; transition:all .3s; text-align:center; }
+.ft-nav-item:hover { border-color:#ffd700; transform:translateY(-2px); background:rgba(255,215,0,.05); }
+.ft-nav-item.active { border-color:#ffd700; background:rgba(255,215,0,.08); }
+.ft-nav-item .fni-icon { font-size:28px; margin-bottom:8px; }
+.ft-nav-item .fni-name { font-size:14px; font-weight:700; color:#fff; }
+.ft-nav-item .fni-count { font-size:11px; color:#6b7280; margin-top:4px; }
+
+/* 对比卡片 */
+.compare-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.compare-card { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:16px; }
+.compare-card .cc-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.compare-card .cc-title { font-size:14px; font-weight:700; color:#fff; }
+.compare-card .cc-tag { font-size:11px; padding:2px 8px; border-radius:8px; font-weight:600; }
+.compare-card .cc-tag.general { background:rgba(255,68,68,.12); color:#ff4444; }
+.compare-card .cc-tag.vertical { background:rgba(0,255,136,.12); color:#00ff88; }
+.compare-card .cc-qa { background:rgba(255,255,255,.04); border-radius:8px; padding:12px; margin-bottom:10px; }
+.compare-card .cc-qa .q { font-size:12.5px; color:#ffd700; font-weight:600; margin-bottom:6px; }
+.compare-card .cc-qa .a { font-size:12.5px; color:#9ca3af; line-height:1.6; }
+.compare-card .cc-qa .a b { color:#e0e0e0; }
+.compare-card .cc-qa .a .correct { color:#00ff88; }
+.compare-card .cc-qa .a .wrong { color:#ff4444; }
+
+/* 数据表格 */
+.data-table { width:100%; border-collapse:collapse; font-size:13px; }
+.data-table th { background:rgba(255,255,255,.06); color:#e0e0e0; padding:10px 12px; text-align:left; font-weight:600; white-space:nowrap; }
+.data-table td { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.06); color:#9ca3af; }
+.data-table td b { color:#fff; }
+.data-table tr:hover td { background:rgba(255,255,255,.03); }
+.data-table .tag { font-size:11px; padding:2px 8px; border-radius:8px; font-weight:600; }
+.data-table .tag.good { background:rgba(0,255,136,.12); color:#00ff88; }
+.data-table .tag.warn { background:rgba(255,215,0,.12); color:#ffd700; }
+.data-table .tag.bad { background:rgba(255,68,68,.12); color:#ff4444; }
+
+/* 进度条 */
+.progress-bar { background:rgba(255,255,255,.06); border-radius:8px; height:8px; overflow:hidden; margin-top:6px; }
+.progress-bar .pb-fill { height:100%; border-radius:8px; transition:width .5s ease; }
+.progress-bar .pb-fill.green { background:linear-gradient(90deg,#00ff88,#00cc66); }
+.progress-bar .pb-fill.yellow { background:linear-gradient(90deg,#ffd700,#ff8c00); }
+.progress-bar .pb-fill.red { background:linear-gradient(90deg,#ff4444,#ff0000); }
+
+/* 操作按钮 */
+.action-bar { display:flex; gap:14px; justify-content:center; margin-top:24px; flex-wrap:wrap; }
+.action-btn { padding:12px 28px; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; border:none; transition:all .2s; }
+.action-btn.primary { background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; }
+.action-btn.primary:hover { transform:translateY(-2px); box-shadow:0 4px 20px rgba(255,215,0,.3); }
+.action-btn.secondary { background:rgba(255,255,255,.08); color:#e0e0e0; border:1px solid rgba(255,255,255,.15); }
+.action-btn.secondary:hover { background:rgba(255,255,255,.15); }
+
+/* 页脚 */
+.footer { text-align:center; padding:20px; color:#555; font-size:12px; border-top:1px solid rgba(255,255,255,.06); margin-top:40px; }
+
+/* 响应式 */
+@media (max-width:768px) {
+  .navbar { padding:12px 16px; }
+  .navbar .logo { font-size:16px; }
+  .module-header { padding:24px 20px; }
+  .module-header h1 { font-size:20px; }
+  .card { padding:18px; }
+  .ft-stats { grid-template-columns:repeat(2,1fr); }
+  .ft-nav { grid-template-columns:repeat(2,1fr); }
+  .compare-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 顶部导航 ===== -->
+<div class="navbar">
+  <div class="logo">🧬 BioFin<span>智投引擎</span></div>
+  <div class="nav-right">
+    <span class="nav-link">模块1 · 文档解析</span>
+    <span class="nav-link">模块2 · 信息抽取</span>
+    <span class="nav-link">模块3 · 知识库</span>
+    <span class="nav-link">模块4 · 18A案例库</span>
+    <span class="nav-link">模块5 · 估值参数库</span>
+    <span class="nav-link active">模块6 · 大模型微调</span>
+    <span class="module-badge">P1 核心 · 模型层</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ===== 模块头部 ===== -->
+  <div class="module-header">
+    <div class="mh-tag">细化模块 #6 ｜ P1 核心 ｜ 模型层</div>
+    <h1>垂直大模型微调 <span>Vertical LLM Fine-tuning</span></h1>
+    <p>投喂医药临床、港股资本专业术语，微调大模型，使AI可精准识别临床分期、18A专业规则、估值逻辑，无常识错误。</p>
+    <div class="mh-meta">
+      <span>优先级：<b>P1 核心</b></span>
+      <span>前置依赖：<b>模块3/4/5（知识库/案例库/参数库）</b></span>
+      <span>开发周期：<b>第5-6周</b></span>
+      <span>验收标准：<b>精准识别临床分期/18A规则，无常识错误</b></span>
+    </div>
+  </div>
+
+  <!-- ===== 微调统计 ===== -->
+  <div class="card">
+    <h2><span class="num">1</span>微调数据总览 <span class="sub">Fine-tuning Data Overview</span></h2>
+    <div class="ft-stats">
+      <div class="ft-stat"><div class="fs-value">50,000<span>条</span></div><div class="fs-label">训练数据</div></div>
+      <div class="ft-stat"><div class="fs-value">8,000<span>条</span></div><div class="fs-label">验证数据</div></div>
+      <div class="ft-stat"><div class="fs-value">2,000<span>条</span></div><div class="fs-label">测试数据</div></div>
+      <div class="ft-stat"><div class="fs-value">98.5<span>%</span></div><div class="fs-label">专业准确率</div></div>
+      <div class="ft-stat"><div class="fs-value">0.5<span>%</span></div><div class="fs-label">常识错误率</div></div>
+      <div class="ft-stat"><div class="fs-value">3<span>轮</span></div><div class="fs-label">微调迭代</div></div>
+    </div>
+  </div>
+
+  <!-- ===== 微调流程 ===== -->
+  <div class="card">
+    <h2><span class="num">2</span>微调流程 <span class="sub">Fine-tuning Pipeline</span></h2>
+    <div class="ft-flow">
+      <div class="ft-step">
+        <div class="fs-num">1</div>
+        <div class="fs-icon">📚</div>
+        <div class="fs-name">数据收集</div>
+        <div class="fs-desc">知识库/案例库/参数库数据</div>
+      </div>
+      <div class="ft-step">
+        <div class="fs-num">2</div>
+        <div class="fs-icon">🧹</div>
+        <div class="fs-name">数据清洗</div>
+        <div class="fs-desc">去重/去噪/标准化</div>
+      </div>
+      <div class="ft-step">
+        <div class="fs-num">3</div>
+        <div class="fs-icon">🏷️</div>
+        <div class="fs-name">数据标注</div>
+        <div class="fs-desc">专家标注/QA对构建</div>
+      </div>
+      <div class="ft-step">
+        <div class="fs-num">4</div>
+        <div class="fs-icon">🤖</div>
+        <div class="fs-name">模型训练</div>
+        <div class="fs-desc">LoRA/QLoRA微调</div>
+      </div>
+      <div class="ft-step">
+        <div class="fs-num">5</div>
+        <div class="fs-icon">📊</div>
+        <div class="fs-name">效果评估</div>
+        <div class="fs-desc">专业准确率/常识错误率</div>
+      </div>
+      <div class="ft-step">
+        <div class="fs-num">6</div>
+        <div class="fs-icon">🔄</div>
+        <div class="fs-name">迭代优化</div>
+        <div class="fs-desc">反馈→再训练→再评估</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 微调能力验证 ===== -->
+  <div class="card">
+    <h2><span class="num">3</span>微调能力验证 <span class="sub">Capability Validation</span></h2>
+
+    <div class="ft-nav">
+      <div class="ft-nav-item active" onclick="switchFT(this,'ft-clinical')">
+        <div class="fni-icon">🧪</div>
+        <div class="fni-name">临床分期识别</div>
+        <div class="fni-count">8,000条测试</div>
+      </div>
+      <div class="ft-nav-item" onclick="switchFT(this,'ft-18a')">
+        <div class="fni-icon">🏦</div>
+        <div class="fni-name">18A规则理解</div>
+        <div class="fni-count">5,000条测试</div>
+      </div>
+      <div class="ft-nav-item" onclick="switchFT(this,'ft-valuation')">
+        <div class="fni-icon">💰</div>
+        <div class="fni-name">估值逻辑</div>
+        <div class="fni-count">4,000条测试</div>
+      </div>
+      <div class="ft-nav-item" onclick="switchFT(this,'ft-terms')">
+        <div class="fni-icon">📖</div>
+        <div class="fni-name">专业术语</div>
+        <div class="fni-count">6,000条测试</div>
+      </div>
+    </div>
+
+    <!-- ===== 临床分期识别 ===== -->
+    <div class="ft-content active" id="ft-clinical">
+      <div class="compare-grid">
+        <div class="compare-card">
+          <div class="cc-head">
+            <span class="cc-title">通用大模型</span>
+            <span class="cc-tag general">微调前</span>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：某药物处于"II期临床"阶段，请问这是什么意思？</div>
+            <div class="a">A：II期临床是药物研发的第二个阶段，主要测试药物的疗效和安全性。<span class="wrong">（回答过于笼统，未区分概念验证与确证性试验）</span></div>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：18A上市需要什么条件？</div>
+            <div class="a">A：18A是港股上市规则，允许未盈利生物科技公司上市。<span class="wrong">（回答不完整，未提及市值≥15亿港元、核心产品临床II期等关键条件）</span></div>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：rNPV估值模型是什么？</div>
+            <div class="a">A：rNPV是风险调整净现值，用于评估项目价值。<span class="wrong">（回答过于简单，未解释临床成功率调整机制）</span></div>
+          </div>
+        </div>
+        <div class="compare-card">
+          <div class="cc-head">
+            <span class="cc-title">BioFin垂直模型</span>
+            <span class="cc-tag vertical">微调后</span>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：某药物处于"II期临床"阶段，请问这是什么意思？</div>
+            <div class="a">A：II期临床是概念验证试验，主要目标为初步疗效验证与最佳剂量确定，样本量通常100-300例，周期1-3年。II期→III期成功率约50%，肿瘤领域约35%。<span class="correct">（精准识别临床分期定义、样本量、成功率）</span></div>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：18A上市需要什么条件？</div>
+            <div class="a">A：18A上市需满足：①市值≥15亿港元；②至少1个核心产品已进入临床II期；③至少2个核心产品研发；④无收入要求。上市后控股股东禁售6个月。<span class="correct">（完整识别18A上市条件与禁售规则）</span></div>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：rNPV估值模型是什么？</div>
+            <div class="a">A：rNPV = Σ(CFt × Pt) / (1+r)^t，将临床成功率纳入现金流折现。临床II期折现率15-18%，肿瘤领域成功率约8.7%。<span class="correct">（精准识别rNPV公式、折现率、成功率参数）</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 18A规则理解 ===== -->
+    <div class="ft-content" id="ft-18a">
+      <div class="compare-grid">
+        <div class="compare-card">
+          <div class="cc-head">
+            <span class="cc-title">通用大模型</span>
+            <span class="cc-tag general">微调前</span>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：18A企业上市后多久可以再融资？</div>
+            <div class="a">A：上市后可以再融资。<span class="wrong">（回答不准确，未提及6个月限制）</span></div>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：18A企业基石投资者禁售期是多久？</div>
+            <div class="a">A：基石投资者有禁售期。<span class="wrong">（回答不完整，未提及6个月具体期限）</span></div>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：18A企业需要满足什么信披要求？</div>
+            <div class="a">A：需要定期披露信息。<span class="wrong">（回答过于笼统，未提及临床进展定期披露）</span></div>
+          </div>
+        </div>
+        <div class="compare-card">
+          <div class="cc-head">
+            <span class="cc-title">BioFin垂直模型</span>
+            <span class="cc-tag vertical">微调后</span>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：18A企业上市后多久可以再融资？</div>
+            <div class="a">A：18A企业上市后6个月可进行再融资，方式包括配售、增发、可转债等。配售通常折价5-8%。<span class="correct">（精准识别再融资时间与方式）</span></div>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：18A企业基石投资者禁售期是多久？</div>
+            <div class="a">A：18A企业基石投资者禁售期为6个月，控股股东禁售期同样为6个月。<span class="correct">（精准识别禁售期规则）</span></div>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：18A企业需要满足什么信披要求？</div>
+            <div class="a">A：18A企业需定期披露临床进展、研发管线更新、财务数据等，重大临床数据需及时公告。<span class="correct">（精准识别信披要求）</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 估值逻辑 ===== -->
+    <div class="ft-content" id="ft-valuation">
+      <div class="compare-grid">
+        <div class="compare-card">
+          <div class="cc-head">
+            <span class="cc-title">通用大模型</span>
+            <span class="cc-tag general">微调前</span>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：某创新药企处于临床II期，如何估值？</div>
+            <div class="a">A：可以使用DCF或可比公司法进行估值。<span class="wrong">（回答过于笼统，未提及rNPV模型和临床成功率调整）</span></div>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：某药物峰值销售预计50亿美元，如何计算管线价值？</div>
+            <div class="a">A：可以用峰值销售乘以倍数估算。<span class="wrong">（回答不专业，未提及rNPV折现和成功率调整）</span></div>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：CXO企业用什么估值方法？</div>
+            <div class="a">A：可以用PE或PS估值。<span class="wrong">（回答不完整，未提及EV/EBITDA等具体方法）</span></div>
+          </div>
+        </div>
+        <div class="compare-card">
+          <div class="cc-head">
+            <span class="cc-title">BioFin垂直模型</span>
+            <span class="cc-tag vertical">微调后</span>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：某创新药企处于临床II期，如何估值？</div>
+            <div class="a">A：临床II期创新药企应采用rNPV模型估值。需输入峰值销售、上市时间、专利期、研发成本、成功率（II期→III期约50%），折现率15-18%。<span class="correct">（精准识别rNPV估值方法）</span></div>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：某药物峰值销售预计50亿美元，如何计算管线价值？</div>
+            <div class="a">A：需用rNPV模型：管线价值 = Σ(CFt × Pt) / (1+r)^t。假设临床II期成功率50%、折现率16%、上市时间5年，管线价值约为峰值销售的15-25%。<span class="correct">（精准计算管线价值）</span></div>
+          </div>
+          <div class="cc-qa">
+            <div class="q">Q：CXO企业用什么估值方法？</div>
+            <div class="a">A：CXO企业通常使用PE（20-40x）或EV/EBITDA（15-25x）估值，因其有稳定收入和利润。<span class="correct">（精准识别CXO估值方法）</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 专业术语 ===== -->
+    <div class="ft-content" id="ft-terms">
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <tr>
+            <th>专业术语</th><th>通用模型识别</th><th>垂直模型识别</th><th>准确率提升</th>
+          </tr>
+          <tr>
+            <td><b>IND</b></td>
+            <td>新药临床试验申请</td>
+            <td>Investigational New Drug，新药临床试验申请，需提交临床前药效/毒理/CMC数据</td>
+            <td><span class="tag good">+35%</span></td>
+          </tr>
+          <tr>
+            <td><b>NDA</b></td>
+            <td>新药上市申请</td>
+            <td>New Drug Application，新药上市申请，审评周期约1-2年，成功率约85%</td>
+            <td><span class="tag good">+40%</span></td>
+          </tr>
+          <tr>
+            <td><b>BLA</b></td>
+            <td>生物制品许可申请</td>
+            <td>Biologics License Application，生物制品许可申请，适用于生物药</td>
+            <td><span class="tag good">+30%</span></td>
+          </tr>
+          <tr>
+            <td><b>rNPV</b></td>
+            <td>风险调整净现值</td>
+            <td>Risk-adjusted Net Present Value，rNPV = Σ(CFt × Pt) / (1+r)^t</td>
+            <td><span class="tag good">+45%</span></td>
+          </tr>
+          <tr>
+            <td><b>18A</b></td>
+            <td>港股上市规则</td>
+            <td>港股18A章，允许未盈利生物科技公司上市，市值≥15亿港元</td>
+            <td><span class="tag good">+50%</span></td>
+          </tr>
+          <tr>
+            <td><b>License-out</b></td>
+            <td>对外授权</td>
+            <td>License-out，将药物海外权益授权给其他公司，获取首付款+里程碑+销售分成</td>
+            <td><span class="tag good">+38%</span></td>
+          </tr>
+          <tr>
+            <td><b>ADC</b></td>
+            <td>抗体偶联药物</td>
+            <td>Antibody-Drug Conjugate，抗体偶联药物，由抗体+连接子+毒素组成</td>
+            <td><span class="tag good">+32%</span></td>
+          </tr>
+          <tr>
+            <td><b>CLDN18.2</b></td>
+            <td>紧密连接蛋白</td>
+            <td>Claudin 18.2，胃癌/胰腺癌靶点，Zolbetuximab已获FDA批准</td>
+            <td><span class="tag good">+42%</span></td>
+          </tr>
+        </table>
+      </div>
+      <div style="margin-top:12px; font-size:12px; color:#6b7280;">
+        <b style="color:#ffd700;">注：</b>垂直模型在专业术语识别上平均提升38%，可精准识别临床分期、18A规则、估值逻辑等专业概念。
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 微调效果评估 ===== -->
+  <div class="card">
+    <h2><span class="num">4</span>微调效果评估 <span class="sub">Fine-tuning Evaluation</span></h2>
+    <div style="overflow-x:auto;">
+      <table class="data-table">
+        <tr>
+          <th>评估维度</th><th>微调前</th><th>微调后</th><th>提升幅度</th><th>进度</th>
+        </tr>
+        <tr>
+          <td><b>临床分期识别准确率</b></td>
+          <td>72%</td>
+          <td>98.5%</td>
+          <td><span class="tag good">+26.5%</span></td>
+          <td><div class="progress-bar"><div class="pb-fill green" style="width:98.5%"></div></div></td>
+        </tr>
+        <tr>
+          <td><b>18A规则理解准确率</b></td>
+          <td>65%</td>
+          <td>97.2%</td>
+          <td><span class="tag good">+32.2%</span></td>
+          <td><div class="progress-bar"><div class="pb-fill green" style="width:97.2%"></div></div></td>
+        </tr>
+        <tr>
+          <td><b>估值逻辑准确率</b></td>
+          <td>58%</td>
+          <td>95.8%</td>
+          <td><span class="tag good">+37.8%</span></td>
+          <td><div class="progress-bar"><div class="pb-fill green" style="width:95.8%"></div></div></td>
+        </tr>
+        <tr>
+          <td><b>专业术语识别准确率</b></td>
+          <td>70%</td>
+          <td>96.5%</td>
+          <td><span class="tag good">+26.5%</span></td>
+          <td><div class="progress-bar"><div class="pb-fill green" style="width:96.5%"></div></div></td>
+        </tr>
+        <tr>
+          <td><b>常识错误率</b></td>
+          <td>3.2%</td>
+          <td>0.5%</td>
+          <td><span class="tag good">-84%</span></td>
+          <td><div class="progress-bar"><div class="pb-fill green" style="width:99.5%"></div></div></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 操作按钮 -->
+  <div class="action-bar">
+    <button class="action-btn primary" onclick="nextModule()">下一步：BP上传端口搭建 →</button>
+    <button class="action-btn secondary" onclick="resetAll()">🔄 重置视图</button>
+  </div>
+
+</div>
+
+<div class="footer">
+  BioFin智投引擎 · 细化模块 #6：垂直大模型微调 — 交互式Demo<br>
+  本页面为演示用途，所有数据均为模拟数据
+</div>
+
+<script>
+// ============ 微调能力切换 ============
+function switchFT(el, ftId) {
+  document.querySelectorAll('.ft-nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.ft-content').forEach(c => c.classList.remove('active'));
+  document.getElementById(ftId).classList.add('active');
+}
+
+// ============ 下一步 ============
+function nextModule() {
+  alert('模块7：BP上传端口搭建（开发中）\n\n将搭建BP上传端口，支持PDF/Word/PPT/文字粘贴/线上问卷录入。');
+}
+
+// ============ 重置 ============
+function resetAll() {
+  document.querySelectorAll('.ft-nav-item').forEach((n, i) => {
+    n.classList.toggle('active', i === 0);
+  });
+  document.querySelectorAll('.ft-content').forEach((c, i) => {
+    c.classList.toggle('active', i === 0);
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

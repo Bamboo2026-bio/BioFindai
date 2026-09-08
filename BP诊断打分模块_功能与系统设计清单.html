@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BioFin智投引擎 · BP全自动诊断打分模块 — 平台功能与系统设计清单</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; background:#f4f6f9; color:#1f2937; line-height:1.7; }
+.container { max-width:1200px; margin:0 auto; padding:30px 24px 80px; }
+
+/* 头部 */
+.hero { background:linear-gradient(135deg,#0f2027,#203a43,#2c5364); color:#fff; border-radius:16px; padding:40px 36px; margin-bottom:30px; position:relative; overflow:hidden; }
+.hero::after { content:""; position:absolute; right:-60px; top:-60px; width:260px; height:260px; border-radius:50%; background:rgba(255,215,0,.08); }
+.hero::before { content:""; position:absolute; right:40px; bottom:-80px; width:200px; height:200px; border-radius:50%; background:rgba(0,255,136,.06); }
+.hero .tag { display:inline-block; background:rgba(255,215,0,.15); color:#ffd700; border:1px solid rgba(255,215,0,.4); padding:4px 14px; border-radius:20px; font-size:13px; margin-bottom:16px; letter-spacing:1px; }
+.hero h1 { font-size:30px; font-weight:800; margin-bottom:10px; }
+.hero h1 span { color:#ffd700; }
+.hero p { color:#cbd5e1; font-size:15px; max-width:760px; }
+.hero .meta { display:flex; gap:24px; margin-top:20px; flex-wrap:wrap; font-size:13px; color:#94a3b8; }
+.hero .meta b { color:#fff; }
+
+/* 卡片 */
+.card { background:#fff; border-radius:14px; padding:28px 30px; margin-bottom:24px; box-shadow:0 2px 12px rgba(0,0,0,.05); border:1px solid #e5e7eb; }
+.card h2 { font-size:21px; font-weight:800; color:#0f2027; margin-bottom:6px; display:flex; align-items:center; gap:10px; }
+.card h2 .num { background:#0f2027; color:#ffd700; width:30px; height:30px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
+.card h2 .sub { font-size:13px; color:#6b7280; font-weight:400; }
+.card .desc { color:#4b5563; font-size:14px; margin-bottom:18px; }
+.card .desc b { color:#0f2027; }
+
+/* 表格 */
+table { width:100%; border-collapse:collapse; font-size:13.5px; margin-top:10px; }
+th { background:#0f2027; color:#fff; padding:10px 12px; text-align:left; font-weight:600; white-space:nowrap; }
+td { padding:10px 12px; border-bottom:1px solid #eef0f2; vertical-align:top; }
+tr:nth-child(even) td { background:#fafbfc; }
+tr:hover td { background:#f0fdf4; }
+.tag-pill { display:inline-block; padding:2px 10px; border-radius:12px; font-size:12px; font-weight:600; }
+.tag-p1 { background:#fee2e2; color:#b91c1c; }
+.tag-p2 { background:#fef3c7; color:#b45309; }
+.tag-p3 { background:#dbeafe; color:#1d4ed8; }
+.tag-p4 { background:#dcfce7; color:#15803d; }
+.tag-core { background:#fce7f3; color:#be185d; }
+.tag-aux { background:#e0e7ff; color:#4338ca; }
+.tag-opt { background:#f3f4f6; color:#4b5563; }
+
+/* 进度条 */
+.progress-wrap { margin-top:14px; }
+.progress-row { display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+.progress-label { width:150px; font-size:13px; font-weight:600; color:#374151; flex-shrink:0; }
+.progress-bar { flex:1; height:22px; background:#e5e7eb; border-radius:11px; overflow:hidden; position:relative; }
+.progress-fill { height:100%; border-radius:11px; display:flex; align-items:center; justify-content:flex-end; padding-right:8px; font-size:11px; color:#fff; font-weight:700; }
+.progress-week { width:70px; font-size:12px; color:#6b7280; text-align:right; flex-shrink:0; }
+
+/* 时间线 */
+.timeline { position:relative; padding-left:28px; margin-top:16px; }
+.timeline::before { content:""; position:absolute; left:8px; top:4px; bottom:4px; width:2px; background:#d1d5db; }
+.tl-item { position:relative; margin-bottom:22px; }
+.tl-item::before { content:""; position:absolute; left:-26px; top:6px; width:12px; height:12px; border-radius:50%; background:#ffd700; border:3px solid #0f2027; }
+.tl-item h4 { font-size:15px; font-weight:700; color:#0f2027; margin-bottom:4px; }
+.tl-item .tl-time { font-size:12px; color:#6b7280; margin-bottom:6px; }
+.tl-item p { font-size:13.5px; color:#4b5563; }
+
+/* 评分体系 */
+.score-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-top:16px; }
+.score-box { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:18px; text-align:center; }
+.score-box .weight { font-size:26px; font-weight:800; color:#0f2027; }
+.score-box .weight span { font-size:14px; color:#6b7280; font-weight:400; }
+.score-box .name { font-size:14px; font-weight:600; color:#374151; margin-top:4px; }
+.score-box .detail { font-size:12px; color:#6b7280; margin-top:6px; line-height:1.5; }
+.score-box.hl { background:linear-gradient(135deg,#0f2027,#203a43); border-color:#0f2027; }
+.score-box.hl .weight, .score-box.hl .name { color:#ffd700; }
+.score-box.hl .detail { color:#cbd5e1; }
+
+/* 成本表 */
+.cost-table td:first-child { font-weight:600; }
+.cost-total { background:#0f2027 !important; color:#fff; font-weight:700; }
+.cost-total td { border-bottom:none; }
+
+/* 风险等级 */
+.risk-lv { display:inline-block; padding:2px 10px; border-radius:10px; font-size:12px; font-weight:700; }
+.risk-high { background:#fee2e2; color:#b91c1c; }
+.risk-mid { background:#fef3c7; color:#b45309; }
+.risk-low { background:#dcfce7; color:#15803d; }
+
+/* 提示框 */
+.note { background:#fffbeb; border-left:4px solid #f59e0b; padding:14px 18px; border-radius:8px; font-size:13.5px; color:#78350f; margin-top:16px; }
+.note.blue { background:#eff6ff; border-left-color:#3b82f6; color:#1e3a8a; }
+.note.green { background:#f0fdf4; border-left-color:#22c55e; color:#14532d; }
+
+/* 模块清单 */
+.mod-list { margin-top:14px; }
+.mod-item { display:flex; gap:14px; padding:14px 0; border-bottom:1px dashed #e5e7eb; align-items:flex-start; }
+.mod-item:last-child { border-bottom:none; }
+.mod-item .mod-icon { width:40px; height:40px; border-radius:10px; background:#0f2027; color:#ffd700; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+.mod-item .mod-body { flex:1; }
+.mod-item .mod-title { font-size:15px; font-weight:700; color:#0f2027; }
+.mod-item .mod-title .pri { margin-left:8px; }
+.mod-item .mod-desc { font-size:13px; color:#4b5563; margin-top:3px; }
+.mod-item .mod-meta { font-size:12px; color:#6b7280; margin-top:5px; display:flex; gap:16px; flex-wrap:wrap; }
+.mod-item .mod-meta b { color:#374151; }
+
+/* 里程碑 */
+.milestone { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; margin-top:16px; }
+.ms-card { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:18px; border-top:4px solid #ffd700; }
+.ms-card .ms-week { font-size:12px; color:#6b7280; font-weight:600; }
+.ms-card .ms-title { font-size:16px; font-weight:800; color:#0f2027; margin:4px 0 8px; }
+.ms-card ul { padding-left:18px; font-size:13px; color:#4b5563; }
+.ms-card ul li { margin-bottom:4px; }
+
+/* 打印 */
+@media print {
+  body { background:#fff; }
+  .card { box-shadow:none; border:1px solid #ddd; break-inside:avoid; }
+  .hero { background:#0f2027 !important; -webkit-print-color-adjust:exact; }
+  th { -webkit-print-color-adjust:exact; }
+  .tag-pill, .risk-lv { -webkit-print-color-adjust:exact; }
+}
+
+/* 响应式 */
+@media (max-width:768px) {
+  .hero h1 { font-size:22px; }
+  .card { padding:20px; }
+  .progress-label { width:110px; }
+  table { font-size:12px; }
+  th, td { padding:8px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- ==================== 头部 ==================== -->
+<div class="hero">
+  <div class="tag">BioFin智投引擎 · 核心功能模块</div>
+  <h1>BP全自动诊断与打分系统 <span>· 平台功能与系统设计清单</span></h1>
+  <p>面向融资项目方上传的商业计划书（BP），构建集「基础框架评估 + 管线深度诊断 + 资本逻辑校验 + 风险点智能高亮」于一体的AI全自动诊断与打分引擎，输出结构化诊断报告与量化评分，为投行立项、尽调、融资方案设计提供智能决策支撑。</p>
+  <div class="meta">
+    <span>文档版本：<b>V1.0</b></span>
+    <span>编制部门：<b>产品与技术部</b></span>
+    <span>开发周期：<b>约 12 周（3个月）</b></span>
+    <span>总预算：<b>约 85–110 万元</b></span>
+    <span>优先级：<b>P1 核心 / P2 重要 / P3 增强 / P4 远期</b></span>
+  </div>
+</div>
+
+<!-- ==================== 一、系统定位与总体架构 ==================== -->
+<div class="card">
+  <h2><span class="num">1</span>系统定位与总体架构 <span class="sub">System Positioning & Architecture</span></h2>
+  <p class="desc"><b>系统定位：</b>作为BioFin智投引擎的「第一入口」与「获客抓手」，承接BP上传→AI诊断→打分→报告输出→增值服务导流的完整转化链路。对内服务投行承揽/承做/风控，对外服务药企创始人/融资方。</p>
+
+  <table>
+    <tr><th style="width:18%">架构层级</th><th style="width:42%">核心组件</th><th>说明</th></tr>
+    <tr><td><b>接入层</b></td><td>BP上传端口（PDF/Word/PPT/文字粘贴/线上问卷）</td><td>多格式解析、OCR识别、版式还原、敏感信息脱敏</td></tr>
+    <tr><td><b>解析层</b></td><td>文档解析引擎 + 结构化抽取器</td><td>章节识别、表格抽取、图表OCR、关键字段自动定位</td></tr>
+    <tr><td><b>诊断层</b></td><td>四大诊断引擎（框架/管线/资本/风险）</td><td>规则引擎 + 垂直大模型 + 知识库RAG检索增强</td></tr>
+    <tr><td><b>评分层</b></td><td>多维度加权评分模型 + 评级输出</td><td>百分制总分 + 四维分项分 + 等级（A/B/C/D）</td></tr>
+    <tr><td><b>输出层</b></td><td>诊断报告生成器 + 可视化看板</td><td>PDF/在线报告、雷达图、风险热力图、改进建议清单</td></tr>
+    <tr><td><b>数据层</b></td><td>行业知识库 / 18A案例库 / 机构偏好库 / 估值参数库</td><td>向量化存储 + 结构化数据库 + 持续更新机制</td></tr>
+  </table>
+
+  <div class="note blue"><b>设计原则：</b>① 模块化解耦，四大诊断引擎可独立迭代；② 规则引擎兜底 + 大模型增强，确保专业准确率与可解释性；③ 全链路留痕，支持人工复核与合规审计；④ 输出标准化，为后续融资方案引擎、机构匹配库提供结构化数据底座。</div>
+</div>
+
+<!-- ==================== 二、四大核心功能模块 ==================== -->
+<div class="card">
+  <h2><span class="num">2</span>四大核心功能模块 <span class="sub">Core Functional Modules</span></h2>
+  <p class="desc">对应需求中的四项要求，拆解为<b>4大诊断引擎 + 12个细化子模块</b>，每个子模块标注优先级（P1核心/P2重要/P3增强/P4远期）。</p>
+
+  <div class="mod-list">
+
+    <!-- 模块A -->
+    <div class="mod-item">
+      <div class="mod-icon">📋</div>
+      <div class="mod-body">
+        <div class="mod-title">模块A · 基础框架评估引擎 <span class="tag-pill tag-p1">P1 核心</span></div>
+        <div class="mod-desc">全方位扫描BP结构完整性，智能查漏补缺，确保商业逻辑闭环与叙事流畅。</div>
+        <div class="mod-meta"><span><b>A1</b> 结构完整性扫描</span><span><b>A2</b> 商业逻辑闭环校验</span><span><b>A3</b> 叙事流畅度与表达质量评估</span></div>
+      </div>
+    </div>
+
+    <!-- 模块B -->
+    <div class="mod-item">
+      <div class="mod-icon">🧬</div>
+      <div class="mod-body">
+        <div class="mod-title">模块B · 管线深度诊断引擎 <span class="tag-pill tag-p1">P1 核心</span></div>
+        <div class="mod-desc">基于行业标准解析临床数据、技术差异化优势及核心专利壁垒的竞争力。</div>
+        <div class="mod-meta"><span><b>B1</b> 临床数据解析与分期校验</span><span><b>B2</b> 技术差异化与竞争格局分析</span><span><b>B3</b> 专利壁垒与知识产权评估</span></div>
+      </div>
+    </div>
+
+    <!-- 模块C -->
+    <div class="mod-item">
+      <div class="mod-icon">💰</div>
+      <div class="mod-body">
+        <div class="mod-title">模块C · 资本逻辑校验引擎 <span class="tag-pill tag-p1">P1 核心</span></div>
+        <div class="mod-desc">识别估值依据缺失、融资金额偏差及资金使用计划的合理性问题。</div>
+        <div class="mod-meta"><span><b>C1</b> 估值合理性校验</span><span><b>C2</b> 融资金额与稀释测算</span><span><b>C3</b> 资金使用计划审查</span></div>
+      </div>
+    </div>
+
+    <!-- 模块D -->
+    <div class="mod-item">
+      <div class="mod-icon">⚠️</div>
+      <div class="mod-body">
+        <div class="mod-title">模块D · 风险点智能高亮引擎 <span class="tag-pill tag-p1">P1 核心</span></div>
+        <div class="mod-desc">自动识别合规性、现金流压力、研发失败率等潜在风险，并高亮标注。</div>
+        <div class="mod-meta"><span><b>D1</b> 合规风险筛查</span><span><b>D2</b> 现金流与资金链压力评估</span><span><b>D3</b> 研发失败率与临床风险预警</span></div>
+      </div>
+    </div>
+
+    <!-- 模块E -->
+    <div class="mod-item">
+      <div class="mod-icon">🧩</div>
+      <div class="mod-body">
+        <div class="mod-title">模块E · 支撑与增强模块 <span class="tag-pill tag-p2">P2 重要</span></div>
+        <div class="mod-desc">支撑四大引擎运行的基础设施与增强能力。</div>
+        <div class="mod-meta"><span><b>E1</b> 文档解析与OCR引擎</span><span><b>E2</b> 行业知识库RAG检索</span><span><b>E3</b> 评分模型与报告生成器</span><span><b>E4</b> 可视化诊断看板</span></div>
+      </div>
+    </div>
+
+    <!-- 模块F -->
+    <div class="mod-item">
+      <div class="mod-icon">🔧</div>
+      <div class="mod-body">
+        <div class="mod-title">模块F · 平台管理与运营模块 <span class="tag-pill tag-p2">P2 重要</span></div>
+        <div class="mod-desc">用户、权限、计费、数据安全与运营后台。</div>
+        <div class="mod-meta"><span><b>F1</b> 用户与权限管理</span><span><b>F2</b> 计费与套餐管理</span><span><b>F3</b> 数据安全与合规审计</span><span><b>F4</b> 运营后台与数据看板</span></div>
+      </div>
+    </div>
+
+    <!-- 模块G -->
+    <div class="mod-item">
+      <div class="mod-icon">🚀</div>
+      <div class="mod-body">
+        <div class="mod-title">模块G · 远期增强模块 <span class="tag-pill tag-p3">P3 增强</span></div>
+        <div class="mod-desc">基于诊断结果延伸的高阶能力，作为商业化增值点。</div>
+        <div class="mod-meta"><span><b>G1</b> AI BP改写与多版本生成</span><span><b>G2</b> 对标企业智能匹配</span><span><b>G3</b> 融资方案初步建议生成</span><span><b>G4</b> 机构匹配与路演问答库</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ==================== 三、细化模块清单（含优先级与依赖） ==================== -->
+<div class="card">
+  <h2><span class="num">3</span>细化模块开发清单 <span class="sub">Detailed Module Breakdown</span></h2>
+  <p class="desc">共 <b>27 个细化模块</b>，标注优先级、依赖关系与建议开发顺序（序号即开发先后）。</p>
+
+  <table>
+    <tr>
+      <th style="width:5%">序号</th>
+      <th style="width:22%">模块名称</th>
+      <th style="width:8%">优先级</th>
+      <th style="width:10%">所属引擎</th>
+      <th style="width:30%">核心功能说明</th>
+      <th>前置依赖</th>
+    </tr>
+    <tr><td>1</td><td><b>文档解析与OCR引擎</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>支撑层</td><td>PDF/Word/PPT/图片解析、OCR识别、版式还原、章节定位</td><td>—</td></tr>
+    <tr><td>2</td><td><b>结构化信息抽取器</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>支撑层</td><td>自动抽取公司信息、管线数据、财务数据、融资条款等关键字段</td><td>模块1</td></tr>
+    <tr><td>3</td><td><b>行业知识库搭建</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>数据层</td><td>靶点/临床分期/NMPA-FDA政策/医保集采/赛道规模等结构化入库</td><td>—</td></tr>
+    <tr><td>4</td><td><b>18A案例库搭建</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>数据层</td><td>港股18A上市企业、再融资、可转债、BD交易公开数据入库</td><td>—</td></tr>
+    <tr><td>5</td><td><b>估值参数库搭建</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>数据层</td><td>rNPV估值模型、行业通用估值参数、可比交易数据库</td><td>—</td></tr>
+    <tr><td>6</td><td><b>垂直大模型微调</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>AI底座</td><td>投喂医药临床、港股资本专业术语，微调领域大模型</td><td>模块3/4</td></tr>
+    <tr><td>7</td><td><b>RAG检索增强模块</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>AI底座</td><td>向量化知识库 + 语义检索，为诊断引擎提供专业依据</td><td>模块3/4/5</td></tr>
+    <tr><td>8</td><td><b>A1 结构完整性扫描</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>框架评估</td><td>对照标准BP模板扫描缺失章节（团队/市场/管线/财务/融资等）</td><td>模块1/2</td></tr>
+    <tr><td>9</td><td><b>A2 商业逻辑闭环校验</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>框架评估</td><td>校验痛点→方案→市场→商业模式→财务→融资的逻辑闭环</td><td>模块8</td></tr>
+    <tr><td>10</td><td><b>A3 叙事流畅度评估</b></td><td><span class="tag-pill tag-p2">P2</span></td><td>框架评估</td><td>语言表达、数据支撑度、叙事逻辑连贯性、可读性评分</td><td>模块8</td></tr>
+    <tr><td>11</td><td><b>B1 临床数据解析与分期校验</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>管线诊断</td><td>解析临床分期、样本量、终点指标、数据读出时间，校验合理性</td><td>模块2/7</td></tr>
+    <tr><td>12</td><td><b>B2 技术差异化与竞争格局</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>管线诊断</td><td>对标同类靶点/适应症竞品，评估技术差异化与First-in-class潜力</td><td>模块3/7</td></tr>
+    <tr><td>13</td><td><b>B3 专利壁垒与IP评估</b></td><td><span class="tag-pill tag-p2">P2</span></td><td>管线诊断</td><td>专利族覆盖、到期时间、FTO风险、核心专利保护强度评估</td><td>模块3/7</td></tr>
+    <tr><td>14</td><td><b>C1 估值合理性校验</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>资本校验</td><td>rNPV/可比公司法交叉验证，识别估值依据缺失或明显偏离</td><td>模块5/7</td></tr>
+    <tr><td>15</td><td><b>C2 融资金额与稀释测算</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>资本校验</td><td>测算融资金额与估值匹配度、稀释比例、资金到位里程碑</td><td>模块14</td></tr>
+    <tr><td>16</td><td><b>C3 资金使用计划审查</b></td><td><span class="tag-pill tag-p2">P2</span></td><td>资本校验</td><td>审查资金用途分配合理性、与管线里程碑匹配度、18个月跑道</td><td>模块15</td></tr>
+    <tr><td>17</td><td><b>D1 合规风险筛查</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>风险高亮</td><td>识别信披违规、夸大宣传、投顾类表述、数据造假嫌疑等合规风险</td><td>模块2/7</td></tr>
+    <tr><td>18</td><td><b>D2 现金流与资金链压力</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>风险高亮</td><td>测算现金跑道、烧钱率、融资断档风险、资金链断裂预警</td><td>模块15</td></tr>
+    <tr><td>19</td><td><b>D3 研发失败率与临床风险</b></td><td><span class="tag-pill tag-p2">P2</span></td><td>风险高亮</td><td>基于历史临床成功率数据，评估管线研发失败概率与风险敞口</td><td>模块11/12</td></tr>
+    <tr><td>20</td><td><b>E3 评分模型与权重体系</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>评分层</td><td>四维加权评分模型（框架/管线/资本/风险），输出百分制与等级</td><td>模块8-19</td></tr>
+    <tr><td>21</td><td><b>E4 诊断报告生成器</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>输出层</td><td>自动生成结构化诊断报告（PDF/在线），含评分、问题清单、改进建议</td><td>模块20</td></tr>
+    <tr><td>22</td><td><b>E5 可视化诊断看板</b></td><td><span class="tag-pill tag-p2">P2</span></td><td>输出层</td><td>雷达图、风险热力图、分项对比、历史诊断趋势</td><td>模块21</td></tr>
+    <tr><td>23</td><td><b>F1 用户与权限管理</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>平台管理</td><td>注册登录、角色权限（药企/投行/管理员）、多租户隔离</td><td>—</td></tr>
+    <tr><td>24</td><td><b>F2 计费与套餐管理</b></td><td><span class="tag-pill tag-p2">P2</span></td><td>平台管理</td><td>免费诊断/单次付费/年度套餐/深度定制报告定价与支付</td><td>模块23</td></tr>
+    <tr><td>25</td><td><b>F3 数据安全与合规审计</b></td><td><span class="tag-pill tag-p1">P1</span></td><td>平台管理</td><td>数据加密、敏感信息脱敏、操作留痕、人工复核机制、合规审核</td><td>模块23</td></tr>
+    <tr><td>26</td><td><b>F4 运营后台与数据看板</b></td><td><span class="tag-pill tag-p3">P3</span></td><td>平台管理</td><td>诊断量统计、转化漏斗、客户画像、模型准确率监控</td><td>模块23/24</td></tr>
+    <tr><td>27</td><td><b>G1-G4 远期增强模块</b></td><td><span class="tag-pill tag-p3">P3</span></td><td>增强层</td><td>AI BP改写、对标企业匹配、融资方案建议、机构匹配与路演问答库</td><td>模块21</td></tr>
+  </table>
+
+  <div class="note"><b>优先级说明：</b>P1核心（第一优先级，MVP必备）｜P2重要（第二优先级，正式版必备）｜P3增强（商业化增值）｜P4远期（持续迭代）。</div>
+</div>
+
+<!-- ==================== 四、评分体系设计 ==================== -->
+<div class="card">
+  <h2><span class="num">4</span>评分体系设计 <span class="sub">Scoring Model Design</span></h2>
+  <p class="desc">采用<b>「百分制总分 + 四维分项分 + 等级评级」</b>的评分模型，权重可配置，支持投行内部自定义。</p>
+
+  <div class="score-grid">
+    <div class="score-box hl">
+      <div class="weight">100<span>分</span></div>
+      <div class="name">综合总分</div>
+      <div class="detail">四维加权汇总<br>输出 A/B/C/D 等级</div>
+    </div>
+    <div class="score-box">
+      <div class="weight">25<span>分</span></div>
+      <div class="name">基础框架评估</div>
+      <div class="detail">结构完整性 40%<br>逻辑闭环 40%<br>叙事表达 20%</div>
+    </div>
+    <div class="score-box">
+      <div class="weight">30<span>分</span></div>
+      <div class="name">管线深度诊断</div>
+      <div class="detail">临床数据 40%<br>技术差异化 35%<br>专利壁垒 25%</div>
+    </div>
+    <div class="score-box">
+      <div class="weight">25<span>分</span></div>
+      <div class="name">资本逻辑校验</div>
+      <div class="detail">估值合理性 40%<br>融资与稀释 35%<br>资金使用 25%</div>
+    </div>
+    <div class="score-box">
+      <div class="weight">20<span>分</span></div>
+      <div class="name">风险控制评估</div>
+      <div class="detail">合规风险 40%<br>现金流压力 35%<br>研发失败率 25%</div>
+    </div>
+  </div>
+
+  <table style="margin-top:20px;">
+    <tr><th style="width:15%">等级</th><th style="width:15%">分数区间</th><th style="width:25%">评级含义</th><th>建议动作</th></tr>
+    <tr><td><b>A级</b> <span class="tag-pill tag-p4">优质</span></td><td>85–100</td><td>BP质量优秀，逻辑完整，管线与资本逻辑扎实</td><td>优先立项，进入深度尽调与融资方案设计</td></tr>
+    <tr><td><b>B级</b> <span class="tag-pill tag-p3">良好</span></td><td>70–84</td><td>BP整体良好，存在部分可优化项</td><td>建议补充完善后推进，提供AI改写增值服务</td></tr>
+    <tr><td><b>C级</b> <span class="tag-pill tag-p2">一般</span></td><td>55–69</td><td>BP存在明显短板，逻辑或数据支撑不足</td><td>需重点整改，提供深度诊断与AI改写服务</td></tr>
+    <tr><td><b>D级</b> <span class="tag-pill tag-p1">待完善</span></td><td><55</td><td>BP质量较差，关键信息缺失严重</td><td>建议暂缓立项，提供BP辅导与模板服务</td></tr>
+  </table>
+
+  <div class="note green"><b>评分可解释性：</b>每个分项评分均附带「评分依据 + 证据引用 + 改进建议」，确保AI评分可追溯、可复核，避免"黑箱"评分。</div>
+</div>
+
+<!-- ==================== 五、开发时间线与进度安排 ==================== -->
+<div class="card">
+  <h2><span class="num">5</span>开发时间线与进度安排 <span class="sub">Development Timeline</span></h2>
+  <p class="desc">总周期 <b>12 周（3个月）</b>，分为 <b>4 个阶段</b>，采用「数据先行 → 底座搭建 → 引擎开发 → 联调上线」的瀑布+敏捷混合模式。</p>
+
+  <div class="progress-wrap">
+    <div class="progress-row">
+      <div class="progress-label">阶段一 · 数据与底座</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:25%;background:#0f2027;">第1-3周</div></div>
+      <div class="progress-week">3周</div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label">阶段二 · 核心引擎开发</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:33%;background:#1d4ed8;">第4-7周</div></div>
+      <div class="progress-week">4周</div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label">阶段三 · 评分与报告</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:25%;background:#b45309;">第8-10周</div></div>
+      <div class="progress-week">3周</div>
+    </div>
+    <div class="progress-row">
+      <div class="progress-label">阶段四 · 联调与上线</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:17%;background:#15803d;">第11-12周</div></div>
+      <div class="progress-week">2周</div>
+    </div>
+  </div>
+
+  <div class="timeline">
+    <div class="tl-item">
+      <h4>阶段一 · 数据与底座搭建（第1-3周）</h4>
+      <div class="tl-time">交付：行业知识库 / 18A案例库 / 估值参数库 / 文档解析引擎 / 垂直模型微调</div>
+      <p>① 行业知识库、18A案例库、估值参数库并行搭建（模块3/4/5）；② 文档解析与OCR引擎开发（模块1）；③ 结构化信息抽取器开发（模块2）；④ 垂直大模型微调启动（模块6）；⑤ RAG检索增强模块搭建（模块7）。</p>
+    </div>
+    <div class="tl-item">
+      <h4>阶段二 · 核心诊断引擎开发（第4-7周）</h4>
+      <div class="tl-time">交付：四大诊断引擎（框架/管线/资本/风险）</div>
+      <p>① 基础框架评估引擎（模块8/9/10）；② 管线深度诊断引擎（模块11/12/13）；③ 资本逻辑校验引擎（模块14/15/16）；④ 风险点智能高亮引擎（模块17/18/19）。四大引擎并行开发，每两周一次集成测试。</p>
+    </div>
+    <div class="tl-item">
+      <h4>阶段三 · 评分模型与报告输出（第8-10周）</h4>
+      <div class="tl-time">交付：评分模型 / 诊断报告生成器 / 可视化看板 / 平台管理</div>
+      <p>① 评分模型与权重体系（模块20）；② 诊断报告生成器（模块21）；③ 可视化诊断看板（模块22）；④ 用户与权限管理（模块23）；⑤ 数据安全与合规审计（模块25）；⑥ 计费与套餐管理（模块24）。</p>
+    </div>
+    <div class="tl-item">
+      <h4>阶段四 · 联调测试与上线（第11-12周）</h4>
+      <div class="tl-time">交付：正式上线版本 / 内测报告 / 合规审核文件</div>
+      <p>① 全链路联调（上传→解析→诊断→评分→报告）；② 投行内部全员内测，收集bug与专业逻辑错误；③ 合规部门审核AI输出内容；④ 修复迭代，正式上线；⑤ 运营后台与数据看板（模块26）启动。</p>
+    </div>
+  </div>
+
+  <div class="milestone">
+    <div class="ms-card">
+      <div class="ms-week">第3周 · 里程碑M1</div>
+      <div class="ms-title">数据底座验收</div>
+      <ul>
+        <li>三大数据库完成入库</li>
+        <li>文档解析引擎可用</li>
+        <li>垂直模型微调初版</li>
+      </ul>
+    </div>
+    <div class="ms-card">
+      <div class="ms-week">第7周 · 里程碑M2</div>
+      <div class="ms-title">四大引擎验收</div>
+      <ul>
+        <li>四大诊断引擎全部可用</li>
+        <li>单引擎准确率≥85%</li>
+        <li>集成测试通过</li>
+      </ul>
+    </div>
+    <div class="ms-card">
+      <div class="ms-week">第10周 · 里程碑M3</div>
+      <div class="ms-title">评分报告验收</div>
+      <ul>
+        <li>评分模型上线</li>
+        <li>报告生成器可用</li>
+        <li>平台管理功能就绪</li>
+      </ul>
+    </div>
+    <div class="ms-card">
+      <div class="ms-week">第12周 · 里程碑M4</div>
+      <div class="ms-title">正式上线</div>
+      <ul>
+        <li>全链路联调通过</li>
+        <li>内测整改完成</li>
+        <li>合规审核通过</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 六、资源与成本预算 ==================== -->
+<div class="card">
+  <h2><span class="num">6</span>资源与成本预算 <span class="sub">Resources & Budget</span></h2>
+  <p class="desc">按 <b>12 周开发周期</b>测算，总预算约 <b>85–110 万元</b>，含人力、算力、数据与第三方服务。</p>
+
+  <table class="cost-table">
+    <tr><th style="width:22%">成本项</th><th style="width:14%">预算区间</th><th style="width:44%">明细说明</th><th>备注</th></tr>
+    <tr><td>人力成本</td><td>45–60 万</td><td>后端工程师×2（12周）、前端工程师×1（12周）、AI算法工程师×2（10周）、产品经理×1（12周）、UI设计师×1（6周）、测试工程师×1（8周）</td><td>按市场均价测算</td></tr>
+    <tr><td>算力与云资源</td><td>8–12 万</td><td>GPU训练资源（模型微调）、云服务器、向量数据库、对象存储、CDN</td><td>含3个月运行费用</td></tr>
+    <tr><td>大模型API费用</td><td>5–8 万</td><td>LLM推理调用、OCR服务、向量化Embedding服务</td><td>按诊断量估算</td></tr>
+    <tr><td>数据采购与整理</td><td>10–15 万</td><td>行业数据库授权、18A公开数据整理、估值参数库建设、专利数据源</td><td>含人工整理成本</td></tr>
+    <tr><td>第三方服务</td><td>5–8 万</td><td>OCR引擎授权、文档解析SDK、安全合规服务、短信/邮件服务</td><td>按需采购</td></tr>
+    <tr><td>测试与验收</td><td>3–5 万</td><td>内测组织、专业顾问评审、合规审核、安全渗透测试</td><td>含外部顾问费</td></tr>
+    <tr><td>预留风险金</td><td>9–12 万</td><td>需求变更、技术风险、延期缓冲</td><td>约总预算10%</td></tr>
+    <tr class="cost-total"><td>合计</td><td>85–110 万</td><td colspan="2">含人力、算力、数据、第三方服务与风险预留</td></tr>
+  </table>
+
+  <div class="note blue"><b>人力配置建议：</b>核心团队建议 <b>8-9 人</b>（2后端 + 1前端 + 2算法 + 1产品 + 1UI + 1测试 + 1数据），投研部提供专业逻辑支持，合规部提供审核支持。若采用外包+自研混合模式，可压缩至 60-75 万。</div>
+</div>
+
+<!-- ==================== 七、技术选型建议 ==================== -->
+<div class="card">
+  <h2><span class="num">7</span>技术选型建议 <span class="sub">Technology Stack</span></h2>
+  <p class="desc">基于「专业准确率优先 + 可解释性 + 成本可控」原则，推荐以下技术栈。</p>
+
+  <table>
+    <tr><th style="width:20%">技术领域</th><th style="width:40%">推荐方案</th><th>说明</th></tr>
+    <tr><td><b>前端框架</b></td><td>React / Vue 3 + TypeScript + Ant Design</td><td>企业级中后台，组件丰富，支持复杂表单与可视化</td></tr>
+    <tr><td><b>后端框架</b></td><td>Python FastAPI + Node.js</td><td>FastAPI适合AI服务，Node.js适合业务API</td></tr>
+    <tr><td><b>文档解析</b></td><td>PyMuPDF + python-docx + python-pptx + Tesseract OCR</td><td>开源方案为主，复杂场景可接入商业OCR</td></tr>
+    <tr><td><b>大模型底座</b></td><td>Qwen / DeepSeek / 智谱GLM（国产合规）+ 领域微调</td><td>国产模型合规可控，支持私有化部署</td></tr>
+    <tr><td><b>向量数据库</b></td><td>Milvus / Qdrant / pgvector</td><td>支撑RAG检索增强，支持大规模向量检索</td></tr>
+    <tr><td><b>数据库</b></td><td>PostgreSQL + Redis</td><td>结构化数据存储 + 缓存</td></tr>
+    <tr><td><b>任务调度</b></td><td>Celery + RabbitMQ / Redis Queue</td><td>异步处理BP解析、诊断等耗时任务</td></tr>
+    <tr><td><b>可视化</b></td><td>ECharts / AntV G2</td><td>雷达图、热力图、趋势图等专业图表</td></tr>
+    <tr><td><b>部署</b></td><td>Docker + Kubernetes + 阿里云/腾讯云</td><td>容器化部署，支持弹性伸缩</td></tr>
+    <tr><td><b>安全合规</b></td><td>数据加密（AES-256）、脱敏、审计日志、等保二级</td><td>满足金融数据安全要求</td></tr>
+  </table>
+</div>
+
+<!-- ==================== 八、验收标准 ==================== -->
+<div class="card">
+  <h2><span class="num">8</span>验收标准 <span class="sub">Acceptance Criteria</span></h2>
+  <p class="desc">分阶段验收，确保每个里程碑可量化、可考核。</p>
+
+  <table>
+    <tr><th style="width:18%">验收维度</th><th style="width:42%">验收标准</th><th>验收方式</th></tr>
+    <tr><td><b>功能完整性</b></td><td>四大诊断引擎全部上线，27个细化模块按优先级完成</td><td>功能测试 + 用例评审</td></tr>
+    <tr><td><b>专业准确率</b></td><td>临床分期识别准确率≥90%，估值校验偏差≤20%，合规风险识别召回率≥85%</td><td>投研部专家盲测</td></tr>
+    <tr><td><b>解析成功率</b></td><td>PDF/Word/PPT解析成功率≥95%，OCR识别准确率≥90%</td><td>批量样本测试</td></tr>
+    <tr><td><b>响应性能</b></td><td>单份BP诊断耗时≤3分钟，报告生成≤30秒，并发支持≥50</td><td>性能压测</td></tr>
+    <tr><td><b>合规安全</b></td><td>通过合规审核，无投顾类违规表述，数据加密与脱敏达标</td><td>合规部审核 + 安全测试</td></tr>
+    <tr><td><b>用户体验</b></td><td>内测满意度≥85%，操作流程无阻塞，报告可读性强</td><td>内测问卷 + 用户访谈</td></tr>
+    <tr><td><b>可扩展性</b></td><td>评分权重可配置，诊断引擎可独立迭代，数据可增量更新</td><td>架构评审</td></tr>
+  </table>
+</div>
+
+<!-- ==================== 九、风险与应对 ==================== -->
+<div class="card">
+  <h2><span class="num">9</span>风险与应对措施 <span class="sub">Risk & Mitigation</span></h2>
+  <p class="desc">识别项目开发与运营中的主要风险，制定应对预案。</p>
+
+  <table>
+    <tr><th style="width:18%">风险类别</th><th style="width:30%">风险描述</th><th style="width:12%">风险等级</th><th>应对措施</th></tr>
+    <tr><td><b>技术风险</b></td><td>大模型专业准确率不足，临床/估值判断出现常识错误</td><td><span class="risk-lv risk-high">高</span></td><td>规则引擎兜底 + 人工复核机制 + 持续微调迭代</td></tr>
+    <tr><td><b>数据风险</b></td><td>行业数据不完整、18A案例覆盖不全、数据时效性差</td><td><span class="risk-lv risk-mid">中</span></td><td>多渠道数据源 + 定期更新机制 + 数据质量监控</td></tr>
+    <tr><td><b>合规风险</b></td><td>AI输出涉及投顾类违规表述、敏感信息泄露</td><td><span class="risk-lv risk-high">高</span></td><td>合规审核前置 + 输出内容过滤 + 数据加密脱敏</td></tr>
+    <tr><td><b>进度风险</b></td><td>开发延期、需求变更、技术难点卡壳</td><td><span class="risk-lv risk-mid">中</span></td><td>敏捷迭代 + 里程碑管控 + 预留10%风险金</td></tr>
+    <tr><td><b>成本风险</b></td><td>算力/API费用超支、人力成本上升</td><td><span class="risk-lv risk-low">低</span></td><td>成本监控 + 国产模型降本 + 按需弹性扩容</td></tr>
+    <tr><td><b>市场风险</b></td><td>用户接受度低、诊断结果与投行判断偏差大</td><td><span class="risk-lv risk-mid">中</span></td><td>投研部深度参与 + 内测反馈迭代 + 持续优化</td></tr>
+  </table>
+</div>
+
+<!-- ==================== 十、与BioFin智投引擎整体规划的衔接 ==================== -->
+<div class="card">
+  <h2><span class="num">10</span>与BioFin智投引擎整体规划的衔接 <span class="sub">Integration with BioFin Roadmap</span></h2>
+  <p class="desc">本模块作为BioFin智投引擎的<b>第一个核心功能</b>，与整体5个月规划无缝衔接。</p>
+
+  <table>
+    <tr><th style="width:22%">整体规划阶段</th><th style="width:30%">本模块的衔接点</th><th>协同价值</th></tr>
+    <tr><td><b>第一阶段</b><br>数据库搭建（第1-6周）</td><td>本模块第1-3周的数据底座搭建与整体规划第一阶段重叠</td><td>共享行业知识库、18A案例库、估值参数库，避免重复建设</td></tr>
+    <tr><td><b>第二阶段</b><br>核心功能开发（第7-16周）</td><td>本模块第4-10周的引擎开发与评分报告开发</td><td>BP诊断输出为融资方案引擎、机构匹配库提供结构化数据输入</td></tr>
+    <tr><td><b>第三阶段</b><br>商业化上线（第17-20周）</td><td>本模块第11-12周上线后进入商业化运营</td><td>BP诊断作为免费获客入口，导流付费增值服务与投行承销业务</td></tr>
+    <tr><td><b>第四阶段</b><br>持续迭代（上线后）</td><td>本模块持续迭代优化</td><td>根据客户反馈优化诊断精度，扩充数据库，新增增强模块</td></tr>
+  </table>
+
+  <div class="note green"><b>协同建议：</b>本模块的「结构化诊断数据」应设计为标准化JSON Schema，作为BioFin智投引擎各模块间的统一数据交换格式，确保后续融资方案引擎、机构匹配库、rNPV估值计算器可直接复用。</div>
+</div>
+
+<!-- ==================== 十一、附录：诊断报告输出样例 ==================== -->
+<div class="card">
+  <h2><span class="num">11</span>附录：诊断报告输出结构 <span class="sub">Report Output Structure</span></h2>
+  <p class="desc">AI诊断报告的标准输出结构，供产品与UI设计参考。</p>
+
+  <table>
+    <tr><th style="width:20%">报告章节</th><th style="width:40%">内容</th><th>呈现形式</th></tr>
+    <tr><td><b>1. 综合评分</b></td><td>总分 + 等级 + 四维分项分</td><td>雷达图 + 分数卡片</td></tr>
+    <tr><td><b>2. 基础框架评估</b></td><td>结构完整性清单、缺失章节、逻辑闭环分析、叙事评分</td><td>清单 + 进度条</td></tr>
+    <tr><td><b>3. 管线深度诊断</b></td><td>临床数据解析、分期校验、竞品对比、专利评估</td><td>表格 + 对比图</td></tr>
+    <tr><td><b>4. 资本逻辑校验</b></td><td>估值合理性、融资与稀释测算、资金使用审查</td><td>测算表 + 图表</td></tr>
+    <tr><td><b>5. 风险高亮</b></td><td>合规风险、现金流压力、研发失败率风险标注</td><td>风险热力图 + 高亮标注</td></tr>
+    <tr><td><b>6. 改进建议</b></td><td>按优先级列出改进项 + 具体修改建议</td><td>行动清单</td></tr>
+    <tr><td><b>7. 增值服务推荐</b></td><td>AI BP改写、融资方案设计、机构匹配等增值服务推荐</td><td>卡片 + 引导按钮</td></tr>
+  </table>
+</div>
+
+<!-- ==================== 页脚 ==================== -->
+<div style="text-align:center; color:#9ca3af; font-size:12px; padding:20px 0; border-top:1px solid #e5e7eb; margin-top:20px;">
+  BioFin智投引擎 · BP全自动诊断与打分系统 — 平台功能与系统设计清单 V1.0<br>
+  编制：产品与技术部 ｜ 审核：投研部 / 合规风控部 ｜ 日期：2026年8月
+</div>
+
+</div>
+</body>
+</html>

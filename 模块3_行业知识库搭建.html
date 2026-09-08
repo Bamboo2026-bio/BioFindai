@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BioFin智投引擎 · 模块3：行业知识库搭建</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; background:#0f2027; color:#e0e0e0; min-height:100vh; }
+
+/* ===== 顶部导航 ===== */
+.navbar { background:rgba(0,0,0,.5); border-bottom:1px solid rgba(255,255,255,.08); padding:14px 30px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; backdrop-filter:blur(10px); }
+.navbar .logo { font-size:20px; font-weight:800; color:#ffd700; }
+.navbar .logo span { color:#00ff88; }
+.navbar .nav-right { display:flex; gap:16px; align-items:center; }
+.navbar .nav-link { color:#9ca3af; font-size:13px; cursor:pointer; padding:6px 14px; border-radius:6px; transition:all .2s; }
+.navbar .nav-link:hover { color:#fff; background:rgba(255,255,255,.08); }
+.navbar .nav-link.active { color:#ffd700; background:rgba(255,215,0,.1); }
+.navbar .module-badge { background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; font-size:11px; font-weight:800; padding:4px 12px; border-radius:20px; letter-spacing:1px; }
+
+/* ===== 主容器 ===== */
+.container { max-width:1200px; margin:0 auto; padding:24px 24px 60px; }
+
+/* ===== 模块头部 ===== */
+.module-header { background:linear-gradient(135deg,#0f2027,#203a43,#2c5364); border-radius:16px; padding:32px 36px; margin-bottom:24px; position:relative; overflow:hidden; }
+.module-header::after { content:""; position:absolute; right:-40px; top:-40px; width:180px; height:180px; border-radius:50%; background:rgba(255,215,0,.06); }
+.module-header .mh-tag { display:inline-block; background:rgba(255,215,0,.15); color:#ffd700; border:1px solid rgba(255,215,0,.4); padding:3px 12px; border-radius:20px; font-size:12px; margin-bottom:12px; letter-spacing:1px; }
+.module-header h1 { font-size:26px; font-weight:800; color:#fff; margin-bottom:8px; }
+.module-header h1 span { color:#ffd700; }
+.module-header p { color:#cbd5e1; font-size:14px; max-width:700px; }
+.module-header .mh-meta { display:flex; gap:20px; margin-top:16px; flex-wrap:wrap; font-size:12px; color:#94a3b8; }
+.module-header .mh-meta b { color:#fff; }
+
+/* ===== 卡片 ===== */
+.card { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:24px 28px; margin-bottom:24px; }
+.card h2 { font-size:18px; font-weight:700; color:#fff; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+.card h2 .num { background:#ffd700; color:#0f2027; width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.card h2 .sub { font-size:12px; color:#6b7280; font-weight:400; }
+.card .desc { color:#9ca3af; font-size:13.5px; margin-bottom:16px; line-height:1.7; }
+.card .desc b { color:#e0e0e0; }
+
+/* ===== 知识库统计 ===== */
+.kb-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:20px; }
+.kb-stat { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:16px; text-align:center; }
+.kb-stat .ks-value { font-size:28px; font-weight:800; color:#ffd700; }
+.kb-stat .ks-value span { font-size:14px; color:#6b7280; font-weight:400; }
+.kb-stat .ks-label { font-size:12px; color:#9ca3af; margin-top:4px; }
+
+/* ===== 知识库分类导航 ===== */
+.kb-nav { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:24px; }
+.kb-nav-item { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:16px; cursor:pointer; transition:all .3s; text-align:center; }
+.kb-nav-item:hover { border-color:#ffd700; transform:translateY(-2px); background:rgba(255,215,0,.05); }
+.kb-nav-item.active { border-color:#ffd700; background:rgba(255,215,0,.08); }
+.kb-nav-item .kni-icon { font-size:28px; margin-bottom:8px; }
+.kb-nav-item .kni-name { font-size:14px; font-weight:700; color:#fff; }
+.kb-nav-item .kni-count { font-size:11px; color:#6b7280; margin-top:4px; }
+
+/* ===== 知识库内容 ===== */
+.kb-content { display:none; }
+.kb-content.active { display:block; animation:fadeIn .3s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+/* 知识卡片 */
+.kb-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; }
+.kb-card { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:16px; transition:all .2s; }
+.kb-card:hover { border-color:rgba(255,215,0,.3); }
+.kb-card .kc-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.kb-card .kc-title { font-size:14px; font-weight:700; color:#fff; }
+.kb-card .kc-tag { font-size:11px; padding:2px 8px; border-radius:8px; font-weight:600; }
+.kb-card .kc-tag.hot { background:rgba(255,68,68,.12); color:#ff4444; }
+.kb-card .kc-tag.normal { background:rgba(74,168,255,.12); color:#4aa8ff; }
+.kb-card .kc-tag.emerging { background:rgba(255,140,0,.12); color:#ff8c00; }
+.kb-card .kc-field { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid rgba(255,255,255,.05); font-size:12.5px; }
+.kb-card .kc-field:last-child { border-bottom:none; }
+.kb-card .kc-field .kf-label { color:#9ca3af; }
+.kb-card .kc-field .kf-value { color:#e0e0e0; font-weight:600; text-align:right; }
+.kb-card .kc-field .kf-value b { color:#ffd700; }
+.kb-card .kc-desc { font-size:12px; color:#9ca3af; line-height:1.6; margin-top:8px; }
+
+/* 表格 */
+.data-table { width:100%; border-collapse:collapse; font-size:13px; }
+.data-table th { background:rgba(255,255,255,.06); color:#e0e0e0; padding:10px 12px; text-align:left; font-weight:600; white-space:nowrap; }
+.data-table td { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.06); color:#9ca3af; }
+.data-table td b { color:#fff; }
+.data-table tr:hover td { background:rgba(255,255,255,.03); }
+.data-table .tag { font-size:11px; padding:2px 8px; border-radius:8px; font-weight:600; }
+.data-table .tag.good { background:rgba(0,255,136,.12); color:#00ff88; }
+.data-table .tag.warn { background:rgba(255,215,0,.12); color:#ffd700; }
+.data-table .tag.bad { background:rgba(255,68,68,.12); color:#ff4444; }
+
+/* 搜索框 */
+.search-box { display:flex; gap:10px; margin-bottom:16px; }
+.search-box input { flex:1; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:10px 16px; color:#fff; font-size:14px; outline:none; }
+.search-box input:focus { border-color:#ffd700; }
+.search-box input::placeholder { color:#6b7280; }
+.search-box .search-btn { background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; border:none; border-radius:8px; padding:10px 24px; font-weight:700; cursor:pointer; font-size:14px; }
+
+/* 操作按钮 */
+.action-bar { display:flex; gap:14px; justify-content:center; margin-top:24px; flex-wrap:wrap; }
+.action-btn { padding:12px 28px; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; border:none; transition:all .2s; }
+.action-btn.primary { background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; }
+.action-btn.primary:hover { transform:translateY(-2px); box-shadow:0 4px 20px rgba(255,215,0,.3); }
+.action-btn.secondary { background:rgba(255,255,255,.08); color:#e0e0e0; border:1px solid rgba(255,255,255,.15); }
+.action-btn.secondary:hover { background:rgba(255,255,255,.15); }
+
+/* 页脚 */
+.footer { text-align:center; padding:20px; color:#555; font-size:12px; border-top:1px solid rgba(255,255,255,.06); margin-top:40px; }
+
+/* 响应式 */
+@media (max-width:768px) {
+  .navbar { padding:12px 16px; }
+  .navbar .logo { font-size:16px; }
+  .module-header { padding:24px 20px; }
+  .module-header h1 { font-size:20px; }
+  .card { padding:18px; }
+  .kb-stats { grid-template-columns:repeat(2,1fr); }
+  .kb-nav { grid-template-columns:repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 顶部导航 ===== -->
+<div class="navbar">
+  <div class="logo">🧬 BioFin<span>智投引擎</span></div>
+  <div class="nav-right">
+    <span class="nav-link">模块1 · 文档解析</span>
+    <span class="nav-link">模块2 · 信息抽取</span>
+    <span class="nav-link active">模块3 · 知识库</span>
+    <span class="module-badge">P1 核心 · 数据层</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ===== 模块头部 ===== -->
+  <div class="module-header">
+    <div class="mh-tag">细化模块 #3 ｜ P1 核心 ｜ 数据层</div>
+    <h1>行业知识库搭建 <span>Industry Knowledge Base</span></h1>
+    <p>搭建生物医药行业结构化知识库，覆盖靶点、临床分期、NMPA/FDA政策、医保集采、赛道规模、18A上市规则等核心领域，为AI诊断引擎提供专业依据。</p>
+    <div class="mh-meta">
+      <span>优先级：<b>P1 核心</b></span>
+      <span>前置依赖：<b>无</b></span>
+      <span>开发周期：<b>第1-3周</b></span>
+      <span>验收标准：<b>覆盖创新药/器械/CXO全赛道</b></span>
+    </div>
+  </div>
+
+  <!-- ===== 知识库统计 ===== -->
+  <div class="card">
+    <h2><span class="num">1</span>知识库总览 <span class="sub">Knowledge Base Overview</span></h2>
+    <div class="kb-stats">
+      <div class="kb-stat"><div class="ks-value">1,286<span>条</span></div><div class="ks-label">靶点数据</div></div>
+      <div class="kb-stat"><div class="ks-value">156<span>条</span></div><div class="ks-label">临床分期规则</div></div>
+      <div class="kb-stat"><div class="ks-value">89<span>条</span></div><div class="ks-label">NMPA/FDA政策</div></div>
+      <div class="kb-stat"><div class="ks-value">64<span>条</span></div><div class="ks-label">医保/集采规则</div></div>
+      <div class="kb-stat"><div class="ks-value">42<span>条</span></div><div class="ks-label">赛道规模数据</div></div>
+      <div class="kb-stat"><div class="ks-value">28<span>条</span></div><div class="ks-label">18A上市规则</div></div>
+    </div>
+  </div>
+
+  <!-- ===== 知识库分类导航 ===== -->
+  <div class="card">
+    <h2><span class="num">2</span>知识库分类 <span class="sub">Knowledge Categories</span></h2>
+
+    <div class="kb-nav">
+      <div class="kb-nav-item active" onclick="switchKB(this,'kb-target')">
+        <div class="kni-icon">🎯</div>
+        <div class="kni-name">靶点知识库</div>
+        <div class="kni-count">1,286条数据</div>
+      </div>
+      <div class="kb-nav-item" onclick="switchKB(this,'kb-clinical')">
+        <div class="kni-icon">🧪</div>
+        <div class="kni-name">临床分期规则</div>
+        <div class="kni-count">156条数据</div>
+      </div>
+      <div class="kb-nav-item" onclick="switchKB(this,'kb-policy')">
+        <div class="kni-icon">📜</div>
+        <div class="kni-name">NMPA/FDA政策</div>
+        <div class="kni-count">89条数据</div>
+      </div>
+      <div class="kb-nav-item" onclick="switchKB(this,'kb-insurance')">
+        <div class="kni-icon">🏥</div>
+        <div class="kni-name">医保/集采规则</div>
+        <div class="kni-count">64条数据</div>
+      </div>
+      <div class="kb-nav-item" onclick="switchKB(this,'kb-market')">
+        <div class="kni-icon">📊</div>
+        <div class="kni-name">赛道规模数据</div>
+        <div class="kni-count">42条数据</div>
+      </div>
+      <div class="kb-nav-item" onclick="switchKB(this,'kb-18a')">
+        <div class="kni-icon">🏦</div>
+        <div class="kni-name">18A上市规则</div>
+        <div class="kni-count">28条数据</div>
+      </div>
+    </div>
+
+    <!-- 搜索框 -->
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="搜索知识库，如：PD-1、临床II期、NMPA、集采、18A..." onkeydown="if(event.key==='Enter')searchKB()">
+      <button class="search-btn" onclick="searchKB()">🔍 搜索</button>
+    </div>
+
+    <!-- ===== 靶点知识库 ===== -->
+    <div class="kb-content active" id="kb-target">
+      <div class="kb-grid">
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">PD-1/PD-L1</span>
+            <span class="kc-tag hot">热门靶点</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">作用机制</span><span class="kf-value">免疫检查点抑制剂</span></div>
+          <div class="kc-field"><span class="kf-label">适应症</span><span class="kf-value">多癌种（肺癌/肝癌/胃癌等）</span></div>
+          <div class="kc-field"><span class="kf-label">市场规模</span><span class="kf-value"><b>全球 400亿美元</b></span></div>
+          <div class="kc-field"><span class="kf-label">竞争格局</span><span class="kf-value">高度竞争（>20家）</span></div>
+          <div class="kc-field"><span class="kf-label">代表企业</span><span class="kf-value">百济神州/信达/恒瑞</span></div>
+          <div class="kc-desc">PD-1/PD-L1是肿瘤免疫治疗的核心靶点，市场已进入红海竞争阶段，差异化方向为双抗、联合用药。</div>
+        </div>
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">HER2</span>
+            <span class="kc-tag hot">热门靶点</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">作用机制</span><span class="kf-value">HER2受体靶向</span></div>
+          <div class="kc-field"><span class="kf-label">适应症</span><span class="kf-value">乳腺癌/胃癌</span></div>
+          <div class="kc-field"><span class="kf-label">市场规模</span><span class="kf-value"><b>全球 150亿美元</b></span></div>
+          <div class="kc-field"><span class="kf-label">竞争格局</span><span class="kf-value">中等竞争（ADC为主）</span></div>
+          <div class="kc-field"><span class="kf-label">代表企业</span><span class="kf-value">罗氏/第一三共/荣昌</span></div>
+          <div class="kc-desc">HER2 ADC药物（如DS-8201）引领市场，差异化方向为新一代ADC、双抗。</div>
+        </div>
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">CLDN18.2</span>
+            <span class="kc-tag emerging">新兴靶点</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">作用机制</span><span class="kf-value">紧密连接蛋白靶向</span></div>
+          <div class="kc-field"><span class="kf-label">适应症</span><span class="kf-value">胃癌/胰腺癌</span></div>
+          <div class="kc-field"><span class="kf-label">市场规模</span><span class="kf-value"><b>潜在 80亿美元</b></span></div>
+          <div class="kc-field"><span class="kf-label">竞争格局</span><span class="kf-value">早期竞争（<10家）</span></div>
+          <div class="kc-field"><span class="kf-label">代表企业</span><span class="kf-value">安斯泰来/创胜集团</span></div>
+          <div class="kc-desc">CLDN18.2是胃癌领域的新兴靶点，Zolbetuximab已获FDA批准，市场潜力大。</div>
+        </div>
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">TROP2</span>
+            <span class="kc-tag emerging">新兴靶点</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">作用机制</span><span class="kf-value">滋养层细胞表面抗原</span></div>
+          <div class="kc-field"><span class="kf-label">适应症</span><span class="kf-value">三阴性乳腺癌/肺癌</span></div>
+          <div class="kc-field"><span class="kf-label">市场规模</span><span class="kf-value"><b>潜在 100亿美元</b></span></div>
+          <div class="kc-field"><span class="kf-label">竞争格局</span><span class="kf-value">早期竞争（ADC为主）</span></div>
+          <div class="kc-field"><span class="kf-label">代表企业</span><span class="kf-value">吉利德/第一三共</span></div>
+          <div class="kc-desc">TROP2 ADC（如Trodelvy）已获批，市场处于快速成长期。</div>
+        </div>
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">GLP-1</span>
+            <span class="kc-tag hot">热门靶点</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">作用机制</span><span class="kf-value">GLP-1受体激动剂</span></div>
+          <div class="kc-field"><span class="kf-label">适应症</span><span class="kf-value">糖尿病/肥胖</span></div>
+          <div class="kc-field"><span class="kf-label">市场规模</span><span class="kf-value"><b>全球 300亿美元</b></span></div>
+          <div class="kc-field"><span class="kf-label">竞争格局</span><span class="kf-value">高度竞争（诺和诺德/礼来）</span></div>
+          <div class="kc-field"><span class="kf-label">代表企业</span><span class="kf-value">诺和诺德/礼来/恒瑞</span></div>
+          <div class="kc-desc">GLP-1是代谢领域最热靶点，口服制剂与联合用药是差异化方向。</div>
+        </div>
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">KRAS</span>
+            <span class="kc-tag emerging">新兴靶点</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">作用机制</span><span class="kf-value">KRAS突变抑制剂</span></div>
+          <div class="kc-field"><span class="kf-label">适应症</span><span class="kf-value">肺癌/结直肠癌</span></div>
+          <div class="kc-field"><span class="kf-label">市场规模</span><span class="kf-value"><b>潜在 200亿美元</b></span></div>
+          <div class="kc-field"><span class="kf-label">竞争格局</span><span class="kf-value">早期竞争（G12C为主）</span></div>
+          <div class="kc-field"><span class="kf-label">代表企业</span><span class="kf-value">安进/诺华/加科思</span></div>
+          <div class="kc-desc">KRAS曾被认为是"不可成药"靶点，G12C抑制剂已获批，G12D等亚型在研。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 临床分期规则 ===== -->
+    <div class="kb-content" id="kb-clinical">
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <tr>
+            <th>阶段</th><th>定义</th><th>核心目标</th><th>样本量</th><th>周期</th><th>成功率</th>
+          </tr>
+          <tr>
+            <td><b>临床前</b></td>
+            <td>IND申报前研究</td>
+            <td>药效/毒理/CMC验证</td>
+            <td>—</td>
+            <td>1-3年</td>
+            <td><span class="tag warn">—</span></td>
+          </tr>
+          <tr>
+            <td><b>临床I期</b></td>
+            <td>首次人体试验</td>
+            <td>安全性/耐受性/剂量</td>
+            <td>20-80例</td>
+            <td>1-2年</td>
+            <td><span class="tag warn">约70%</span></td>
+          </tr>
+          <tr>
+            <td><b>临床II期</b></td>
+            <td>概念验证试验</td>
+            <td>初步疗效/最佳剂量</td>
+            <td>100-300例</td>
+            <td>1-3年</td>
+            <td><span class="tag warn">约50%</span></td>
+          </tr>
+          <tr>
+            <td><b>临床III期</b></td>
+            <td>确证性试验</td>
+            <td>确证疗效/安全性</td>
+            <td>300-3,000例</td>
+            <td>2-4年</td>
+            <td><span class="tag bad">约30%</span></td>
+          </tr>
+          <tr>
+            <td><b>NDA/BLA</b></td>
+            <td>上市申请</td>
+            <td>审评审批</td>
+            <td>—</td>
+            <td>1-2年</td>
+            <td><span class="tag good">约85%</span></td>
+          </tr>
+          <tr>
+            <td><b>上市后</b></td>
+            <td>IV期临床</td>
+            <td>长期安全性监测</td>
+            <td>数千例</td>
+            <td>持续</td>
+            <td><span class="tag good">—</span></td>
+          </tr>
+        </table>
+      </div>
+      <div style="margin-top:16px; font-size:12px; color:#6b7280;">
+        <b style="color:#ffd700;">注：</b>临床成功率数据基于历史统计，不同适应症/靶点差异较大。肿瘤领域II期→III期成功率约30-40%，代谢领域相对较高。
+      </div>
+    </div>
+
+    <!-- ===== NMPA/FDA政策 ===== -->
+    <div class="kb-content" id="kb-policy">
+      <div class="kb-grid">
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">NMPA 药品注册分类</span>
+            <span class="kc-tag normal">中国政策</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">1类</span><span class="kf-value">境内外均未上市创新药</span></div>
+          <div class="kc-field"><span class="kf-label">2类</span><span class="kf-value">改良型新药</span></div>
+          <div class="kc-field"><span class="kf-label">3类</span><span class="kf-value">境外上市境内未上市仿制药</span></div>
+          <div class="kc-field"><span class="kf-label">4类</span><span class="kf-value">境内仿制药</span></div>
+          <div class="kc-field"><span class="kf-label">5类</span><span class="kf-value">境外上市原研药</span></div>
+          <div class="kc-desc">创新药（1类）享受优先审评、附条件批准等政策红利。</div>
+        </div>
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">FDA 加速审批通道</span>
+            <span class="kc-tag normal">美国政策</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">加速批准</span><span class="kf-value">基于替代终点</span></div>
+          <div class="kc-field"><span class="kf-label">突破性疗法</span><span class="kf-value">显著优于现有疗法</span></div>
+          <div class="kc-field"><span class="kf-label">优先审评</span><span class="kf-value">6个月审评周期</span></div>
+          <div class="kc-field"><span class="kf-label">快速通道</span><span class="kf-value">滚动审评</span></div>
+          <div class="kc-field"><span class="kf-label">孤儿药</span><span class="kf-value">罕见病7年独占</span></div>
+          <div class="kc-desc">FDA四大加速通道可显著缩短上市时间，是创新药出海的关键路径。</div>
+        </div>
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">NMPA 优先审评</span>
+            <span class="kc-tag normal">中国政策</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">适用条件</span><span class="kf-value">临床急需/重大创新</span></div>
+          <div class="kc-field"><span class="kf-label">审评周期</span><span class="kf-value">优先审评 6个月</span></div>
+          <div class="kc-field"><span class="kf-label">附条件批准</span><span class="kf-value">基于替代终点</span></div>
+          <div class="kc-field"><span class="kf-label">突破性治疗</span><span class="kf-value">2020年实施</span></div>
+          <div class="kc-desc">NMPA近年持续改革，创新药审评审批速度大幅提升。</div>
+        </div>
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">FDA 505(b)(2)</span>
+            <span class="kc-tag normal">美国政策</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">定义</span><span class="kf-value">改良型新药申请</span></div>
+          <div class="kc-field"><span class="kf-label">优势</span><span class="kf-value">可引用已有数据</span></div>
+          <div class="kc-field"><span class="kf-label">适用</span><span class="kf-value">新剂型/新适应症</span></div>
+          <div class="kc-field"><span class="kf-label">周期</span><span class="kf-value">较NDA缩短</span></div>
+          <div class="kc-desc">505(b)(2)路径可降低研发成本与时间，适合改良型创新。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 医保/集采规则 ===== -->
+    <div class="kb-content" id="kb-insurance">
+      <div class="kb-grid">
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">国家医保谈判</span>
+            <span class="kc-tag normal">医保规则</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">频率</span><span class="kf-value">每年一次</span></div>
+          <div class="kc-field"><span class="kf-label">准入条件</span><span class="kf-value">临床价值/经济性</span></div>
+          <div class="kc-field"><span class="kf-label">降价幅度</span><span class="kf-value">平均 50-60%</span></div>
+          <div class="kc-field"><span class="kf-label">创新药倾斜</span><span class="kf-value">1类新药优先</span></div>
+          <div class="kc-desc">医保谈判是创新药放量的关键路径，但需承受大幅降价压力。</div>
+        </div>
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">国家集采</span>
+            <span class="kc-tag normal">集采规则</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">覆盖范围</span><span class="kf-value">化学药/生物药</span></div>
+          <div class="kc-field"><span class="kf-label">降价幅度</span><span class="kf-value">平均 50-70%</span></div>
+          <div class="kc-field"><span class="kf-label">批次</span><span class="kf-value">已开展9批</span></div>
+          <div class="kc-field"><span class="kf-label">影响</span><span class="kf-value">仿制药利润大幅压缩</span></div>
+          <div class="kc-desc">集采主要影响仿制药企业，创新药企业需加速向创新转型。</div>
+        </div>
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">DRG/DIP支付改革</span>
+            <span class="kc-tag normal">医保规则</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">定义</span><span class="kf-value">按病种付费</span></div>
+          <div class="kc-field"><span class="kf-label">影响</span><span class="kf-value">医院控费压力加大</span></div>
+          <div class="kc-field"><span class="kf-label">创新药影响</span><span class="kf-value">需证明药物经济学价值</span></div>
+          <div class="kc-field"><span class="kf-label">双通道</span><span class="kf-value">药店/医院双通道</span></div>
+          <div class="kc-desc">DRG/DIP改革推动创新药向院外市场拓展，双通道政策提供新渠道。</div>
+        </div>
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">医保目录调整</span>
+            <span class="kc-tag normal">医保规则</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">调整频率</span><span class="kf-value">每年一次</span></div>
+          <div class="kc-field"><span class="kf-label">谈判药品</span><span class="kf-value">创新药为主</span></div>
+          <div class="kc-field"><span class="kf-label">续约规则</span><span class="kf-value">简易续约/重新谈判</span></div>
+          <div class="kc-field"><span class="kf-label">支付标准</span><span class="kf-value">谈判确定</span></div>
+          <div class="kc-desc">医保目录调整是创新药进入主流市场的关键通道。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 赛道规模数据 ===== -->
+    <div class="kb-content" id="kb-market">
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <tr>
+            <th>赛道</th><th>2025年规模</th><th>2030年预测</th><th>CAGR</th><th>竞争热度</th><th>代表企业</th>
+          </tr>
+          <tr>
+            <td><b>肿瘤免疫治疗</b></td>
+            <td>850亿美元</td>
+            <td>1,200亿美元</td>
+            <td>7.1%</td>
+            <td><span class="tag bad">高度竞争</span></td>
+            <td>百济/信达/恒瑞</td>
+          </tr>
+          <tr>
+            <td><b>ADC药物</b></td>
+            <td>120亿美元</td>
+            <td>400亿美元</td>
+            <td>27.2%</td>
+            <td><span class="tag warn">中等竞争</span></td>
+            <td>第一三共/荣昌</td>
+          </tr>
+          <tr>
+            <td><b>GLP-1代谢</b></td>
+            <td>300亿美元</td>
+            <td>800亿美元</td>
+            <td>21.7%</td>
+            <td><span class="tag bad">高度竞争</span></td>
+            <td>诺和诺德/礼来</td>
+          </tr>
+          <tr>
+            <td><b>基因治疗</b></td>
+            <td>50亿美元</td>
+            <td>200亿美元</td>
+            <td>32.0%</td>
+            <td><span class="tag good">早期竞争</span></td>
+            <td>诺华/辉瑞</td>
+          </tr>
+          <tr>
+            <td><b>细胞治疗</b></td>
+            <td>80亿美元</td>
+            <td>250亿美元</td>
+            <td>25.6%</td>
+            <td><span class="tag warn">中等竞争</span></td>
+            <td>传奇生物/药明巨诺</td>
+          </tr>
+          <tr>
+            <td><b>CXO服务</b></td>
+            <td>1,200亿美元</td>
+            <td>2,000亿美元</td>
+            <td>10.8%</td>
+            <td><span class="tag warn">中等竞争</span></td>
+            <td>药明康德/泰格</td>
+          </tr>
+          <tr>
+            <td><b>高值耗材</b></td>
+            <td>600亿美元</td>
+            <td>900亿美元</td>
+            <td>8.4%</td>
+            <td><span class="tag warn">中等竞争</span></td>
+            <td>微创/迈瑞</td>
+          </tr>
+          <tr>
+            <td><b>AI制药</b></td>
+            <td>30亿美元</td>
+            <td>150亿美元</td>
+            <td>38.0%</td>
+            <td><span class="tag good">早期竞争</span></td>
+            <td>英矽智能/晶泰</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== 18A上市规则 ===== -->
+    <div class="kb-content" id="kb-18a">
+      <div class="kb-grid">
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">18A 上市条件</span>
+            <span class="kc-tag normal">港股规则</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">适用对象</span><span class="kf-value">未盈利生物科技公司</span></div>
+          <div class="kc-field"><span class="kf-label">市值要求</span><span class="kf-value">≥15亿港元</span></div>
+          <div class="kc-field"><span class="kf-label">核心产品</span><span class="kf-value">至少1个已进入临床II期</span></div>
+          <div class="kc-field"><span class="kf-label">研发投入</span><span class="kf-value">≥2个核心产品研发</span></div>
+          <div class="kc-field"><span class="kf-label">商业化</span><span class="kf-value">无收入要求</span></div>
+          <div class="kc-desc">18A允许未盈利生物科技公司在港股上市，核心产品需进入临床II期。</div>
+        </div>
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">18A 上市流程</span>
+            <span class="kc-tag normal">港股规则</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">保荐人</span><span class="kf-value">需2名保荐人</span></div>
+          <div class="kc-field"><span class="kf-label">聆讯</span><span class="kf-value">上市委员会聆讯</span></div>
+          <div class="kc-field"><span class="kf-label">招股</span><span class="kf-value">公开发售+配售</span></div>
+          <div class="kc-field"><span class="kf-label">周期</span><span class="kf-value">6-12个月</span></div>
+          <div class="kc-desc">18A上市流程与主板类似，但需额外满足生物科技公司特殊要求。</div>
+        </div>
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">18A 上市后要求</span>
+            <span class="kc-tag normal">港股规则</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">禁售期</span><span class="kf-value">控股股东6个月</span></div>
+          <div class="kc-field"><span class="kf-label">基石投资者</span><span class="kf-value">6个月禁售</span></div>
+          <div class="kc-field"><span class="kf-label">信披要求</span><span class="kf-value">临床进展定期披露</span></div>
+          <div class="kc-field"><span class="kf-label">再融资</span><span class="kf-value">上市后6个月可再融资</span></div>
+          <div class="kc-desc">18A上市后需持续披露临床进展，再融资需遵守相关规则。</div>
+        </div>
+        <div class="kb-card">
+          <div class="kc-head">
+            <span class="kc-title">18A 已上市企业</span>
+            <span class="kc-tag normal">港股规则</span>
+          </div>
+          <div class="kc-field"><span class="kf-label">累计上市</span><span class="kf-value">60+家</span></div>
+          <div class="kc-field"><span class="kf-label">代表企业</span><span class="kf-value">百济神州/信达/康方</span></div>
+          <div class="kc-field"><span class="kf-label">市值分布</span><span class="kf-value">50-2,000亿港元</span></div>
+          <div class="kc-field"><span class="kf-label">再融资</span><span class="kf-value">配售/可转债/增发</span></div>
+          <div class="kc-desc">18A板块已成为中国创新药企的主要上市通道之一。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 操作按钮 -->
+  <div class="action-bar">
+    <button class="action-btn primary" onclick="nextModule()">下一步：18A案例库搭建 →</button>
+    <button class="action-btn secondary" onclick="resetAll()">🔄 重置视图</button>
+  </div>
+
+</div>
+
+<div class="footer">
+  BioFin智投引擎 · 细化模块 #3：行业知识库搭建 — 交互式Demo<br>
+  本页面为演示用途，所有数据均为模拟数据
+</div>
+
+<script>
+// ============ 知识库分类切换 ============
+function switchKB(el, kbId) {
+  document.querySelectorAll('.kb-nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.kb-content').forEach(c => c.classList.remove('active'));
+  document.getElementById(kbId).classList.add('active');
+}
+
+// ============ 搜索 ============
+function searchKB() {
+  const query = document.getElementById('searchInput').value.trim();
+  if (!query) {
+    alert('请输入搜索关键词');
+    return;
+  }
+  alert('搜索功能演示：\n\n关键词：' + query + '\n\n在真实系统中，将基于向量化知识库进行语义检索，返回相关靶点、政策、规则等专业信息。');
+}
+
+// ============ 下一步 ============
+function nextModule() {
+  alert('模块4：18A案例库搭建（开发中）\n\n将搭建港股18A上市企业、再融资、可转债、BD交易公开数据入库。');
+}
+
+// ============ 重置 ============
+function resetAll() {
+  document.querySelectorAll('.kb-nav-item').forEach((n, i) => {
+    n.classList.toggle('active', i === 0);
+  });
+  document.querySelectorAll('.kb-content').forEach((c, i) => {
+    c.classList.toggle('active', i === 0);
+  });
+  document.getElementById('searchInput').value = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

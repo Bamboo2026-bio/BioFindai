@@ -1,0 +1,9 @@
+{
+    "workbench.colorTheme": "Default Dark Modern",
+    "editor.quickSuggestions": {
+        "other": "on",
+        "comments": true,
+        "strings": "off"
+    },
+    "pythonPreview.code.fontSize": "14"
+}

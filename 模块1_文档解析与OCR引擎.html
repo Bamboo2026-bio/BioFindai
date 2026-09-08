@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BioFin智投引擎 · 模块1：文档解析与OCR引擎</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; background:#0f2027; color:#e0e0e0; min-height:100vh; }
+
+/* ===== 顶部导航 ===== */
+.navbar { background:rgba(0,0,0,.5); border-bottom:1px solid rgba(255,255,255,.08); padding:14px 30px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; backdrop-filter:blur(10px); }
+.navbar .logo { font-size:20px; font-weight:800; color:#ffd700; }
+.navbar .logo span { color:#00ff88; }
+.navbar .nav-right { display:flex; gap:16px; align-items:center; }
+.navbar .nav-link { color:#9ca3af; font-size:13px; cursor:pointer; padding:6px 14px; border-radius:6px; transition:all .2s; }
+.navbar .nav-link:hover { color:#fff; background:rgba(255,255,255,.08); }
+.navbar .nav-link.active { color:#ffd700; background:rgba(255,215,0,.1); }
+.navbar .module-badge { background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; font-size:11px; font-weight:800; padding:4px 12px; border-radius:20px; letter-spacing:1px; }
+
+/* ===== 主容器 ===== */
+.container { max-width:1200px; margin:0 auto; padding:24px 24px 60px; }
+
+/* ===== 模块头部 ===== */
+.module-header { background:linear-gradient(135deg,#0f2027,#203a43,#2c5364); border-radius:16px; padding:32px 36px; margin-bottom:24px; position:relative; overflow:hidden; }
+.module-header::after { content:""; position:absolute; right:-40px; top:-40px; width:180px; height:180px; border-radius:50%; background:rgba(255,215,0,.06); }
+.module-header .mh-tag { display:inline-block; background:rgba(255,215,0,.15); color:#ffd700; border:1px solid rgba(255,215,0,.4); padding:3px 12px; border-radius:20px; font-size:12px; margin-bottom:12px; letter-spacing:1px; }
+.module-header h1 { font-size:26px; font-weight:800; color:#fff; margin-bottom:8px; }
+.module-header h1 span { color:#ffd700; }
+.module-header p { color:#cbd5e1; font-size:14px; max-width:700px; }
+.module-header .mh-meta { display:flex; gap:20px; margin-top:16px; flex-wrap:wrap; font-size:12px; color:#94a3b8; }
+.module-header .mh-meta b { color:#fff; }
+
+/* ===== 卡片 ===== */
+.card { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:24px 28px; margin-bottom:24px; }
+.card h2 { font-size:18px; font-weight:700; color:#fff; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+.card h2 .num { background:#ffd700; color:#0f2027; width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.card h2 .sub { font-size:12px; color:#6b7280; font-weight:400; }
+.card .desc { color:#9ca3af; font-size:13.5px; margin-bottom:16px; line-height:1.7; }
+.card .desc b { color:#e0e0e0; }
+
+/* ===== 上传区域 ===== */
+.upload-zone { background:rgba(255,255,255,.03); border:2px dashed rgba(255,255,255,.2); border-radius:12px; padding:40px 30px; text-align:center; cursor:pointer; transition:all .3s; }
+.upload-zone:hover { border-color:#ffd700; background:rgba(255,215,0,.04); }
+.upload-zone.dragging { border-color:#00ff88; background:rgba(0,255,136,.04); }
+.upload-zone .uz-icon { font-size:48px; margin-bottom:12px; }
+.upload-zone h3 { font-size:18px; color:#fff; margin-bottom:6px; }
+.upload-zone p { color:#9ca3af; font-size:13px; margin-bottom:16px; }
+.upload-zone .uz-btn { display:inline-block; background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; padding:10px 28px; border-radius:8px; font-weight:700; font-size:14px; border:none; cursor:pointer; transition:transform .2s; }
+.upload-zone .uz-btn:hover { transform:translateY(-2px); }
+.upload-zone .uz-formats { font-size:11px; color:#6b7280; margin-top:12px; }
+
+/* 文件类型选择 */
+.file-types { display:flex; gap:10px; justify-content:center; margin-top:16px; flex-wrap:wrap; }
+.file-type { padding:8px 16px; border-radius:8px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); color:#9ca3af; font-size:13px; cursor:pointer; transition:all .2s; }
+.file-type:hover { border-color:#ffd700; color:#ffd700; }
+.file-type.active { background:rgba(255,215,0,.1); border-color:#ffd700; color:#ffd700; font-weight:600; }
+
+/* ===== 解析进度 ===== */
+.parse-progress { display:none; text-align:center; padding:30px 20px; }
+.parse-progress.show { display:block; }
+.parse-progress .pp-icon { font-size:48px; margin-bottom:16px; animation:pulse 1.5s infinite; }
+@keyframes pulse { 0%,100% { transform:scale(1); opacity:1; } 50% { transform:scale(1.1); opacity:.7; } }
+.parse-progress h3 { color:#fff; font-size:18px; margin-bottom:8px; }
+.parse-progress p { color:#9ca3af; font-size:13px; margin-bottom:20px; }
+.parse-progress .pp-bar { max-width:400px; margin:0 auto 20px; height:8px; background:rgba(255,255,255,.1); border-radius:4px; overflow:hidden; }
+.parse-progress .pp-bar-fill { height:100%; background:linear-gradient(90deg,#ffd700,#ff8c00); border-radius:4px; transition:width .3s; }
+.parse-progress .pp-steps { max-width:400px; margin:0 auto; text-align:left; }
+.parse-progress .pp-step { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:6px; margin-bottom:6px; background:rgba(255,255,255,.03); opacity:.4; transition:all .3s; }
+.parse-progress .pp-step.active { opacity:1; background:rgba(255,215,0,.06); border-left:3px solid #ffd700; }
+.parse-progress .pp-step.done { opacity:.8; }
+.parse-progress .pp-step .ps-icon { font-size:16px; }
+.parse-progress .pp-step .ps-text { font-size:13px; color:#e0e0e0; }
+.parse-progress .pp-step .ps-status { margin-left:auto; font-size:12px; color:#00ff88; }
+
+/* ===== 解析结果 ===== */
+.parse-result { display:none; }
+.parse-result.show { display:block; animation:fadeIn .4s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+/* 统计卡片 */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:20px; }
+.stat-card { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:16px; text-align:center; }
+.stat-card .st-value { font-size:28px; font-weight:800; color:#ffd700; }
+.stat-card .st-value span { font-size:14px; color:#6b7280; font-weight:400; }
+.stat-card .st-label { font-size:12px; color:#9ca3af; margin-top:4px; }
+
+/* 标签页 */
+.tabs { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+.tab { padding:8px 18px; border-radius:8px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); color:#9ca3af; font-size:13px; cursor:pointer; transition:all .2s; }
+.tab:hover { border-color:#ffd700; color:#ffd700; }
+.tab.active { background:rgba(255,215,0,.1); border-color:#ffd700; color:#ffd700; font-weight:600; }
+
+.tab-content { display:none; }
+.tab-content.active { display:block; animation:fadeIn .3s ease; }
+
+/* 章节树 */
+.chapter-tree { background:rgba(255,255,255,.03); border-radius:10px; padding:16px; }
+.chapter-tree .ct-item { padding:8px 12px; border-radius:6px; margin-bottom:4px; cursor:pointer; transition:all .2s; display:flex; align-items:center; gap:10px; }
+.chapter-tree .ct-item:hover { background:rgba(255,255,255,.05); }
+.chapter-tree .ct-item.active { background:rgba(255,215,0,.08); border-left:3px solid #ffd700; }
+.chapter-tree .ct-item .ct-icon { font-size:16px; }
+.chapter-tree .ct-item .ct-name { font-size:13px; color:#e0e0e0; flex:1; }
+.chapter-tree .ct-item .ct-pages { font-size:11px; color:#6b7280; }
+.chapter-tree .ct-item .ct-status { font-size:11px; padding:2px 8px; border-radius:8px; font-weight:600; }
+.chapter-tree .ct-item .ct-status.ok { background:rgba(0,255,136,.12); color:#00ff88; }
+.chapter-tree .ct-item .ct-status.warn { background:rgba(255,215,0,.12); color:#ffd700; }
+.chapter-tree .ct-item .ct-status.missing { background:rgba(255,68,68,.12); color:#ff4444; }
+.chapter-tree .ct-item .ct-status.ocr { background:rgba(74,168,255,.12); color:#4aa8ff; }
+
+/* 文本预览 */
+.text-preview { background:rgba(255,255,255,.03); border-radius:10px; padding:16px; max-height:400px; overflow-y:auto; font-size:13px; line-height:1.8; color:#cbd5e1; }
+.text-preview .tp-line { padding:2px 0; }
+.text-preview .tp-line.highlight { background:rgba(255,215,0,.08); border-left:3px solid #ffd700; padding-left:8px; }
+.text-preview .tp-line .tp-page { color:#6b7280; font-size:11px; margin-right:8px; }
+.text-preview .tp-line .tp-text { color:#cbd5e1; }
+.text-preview .tp-line .tp-text b { color:#ffd700; }
+
+/* 表格预览 */
+.table-preview { overflow-x:auto; }
+.table-preview table { width:100%; border-collapse:collapse; font-size:13px; }
+.table-preview th { background:rgba(255,255,255,.06); color:#e0e0e0; padding:10px 12px; text-align:left; font-weight:600; white-space:nowrap; }
+.table-preview td { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.06); color:#9ca3af; }
+.table-preview td b { color:#fff; }
+.table-preview tr:hover td { background:rgba(255,255,255,.03); }
+
+/* OCR结果 */
+.ocr-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; }
+.ocr-card { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:16px; }
+.ocr-card .oc-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.ocr-card .oc-title { font-size:13px; font-weight:700; color:#fff; }
+.ocr-card .oc-conf { font-size:11px; padding:2px 8px; border-radius:8px; font-weight:600; }
+.ocr-card .oc-conf.high { background:rgba(0,255,136,.12); color:#00ff88; }
+.ocr-card .oc-conf.mid { background:rgba(255,215,0,.12); color:#ffd700; }
+.ocr-card .oc-conf.low { background:rgba(255,68,68,.12); color:#ff4444; }
+.ocr-card .oc-text { font-size:12px; color:#9ca3af; line-height:1.7; }
+.ocr-card .oc-text b { color:#e0e0e0; }
+.ocr-card .oc-loc { font-size:11px; color:#6b7280; margin-top:8px; }
+
+/* 版式还原 */
+.layout-preview { background:rgba(255,255,255,.03); border-radius:10px; padding:16px; }
+.layout-preview .lp-item { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.06); }
+.layout-preview .lp-item:last-child { border-bottom:none; }
+.layout-preview .lp-icon { font-size:20px; flex-shrink:0; }
+.layout-preview .lp-body { flex:1; }
+.layout-preview .lp-title { font-size:13px; font-weight:600; color:#fff; margin-bottom:4px; }
+.layout-preview .lp-desc { font-size:12px; color:#9ca3af; line-height:1.6; }
+.layout-preview .lp-meta { font-size:11px; color:#6b7280; margin-top:4px; }
+
+/* 操作按钮 */
+.action-bar { display:flex; gap:14px; justify-content:center; margin-top:24px; flex-wrap:wrap; }
+.action-btn { padding:12px 28px; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; border:none; transition:all .2s; }
+.action-btn.primary { background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; }
+.action-btn.primary:hover { transform:translateY(-2px); box-shadow:0 4px 20px rgba(255,215,0,.3); }
+.action-btn.secondary { background:rgba(255,255,255,.08); color:#e0e0e0; border:1px solid rgba(255,255,255,.15); }
+.action-btn.secondary:hover { background:rgba(255,255,255,.15); }
+.action-btn.green { background:linear-gradient(135deg,#00ff88,#00cc66); color:#0f2027; }
+.action-btn.green:hover { transform:translateY(-2px); box-shadow:0 4px 20px rgba(0,255,136,.3); }
+
+/* 页脚 */
+.footer { text-align:center; padding:20px; color:#555; font-size:12px; border-top:1px solid rgba(255,255,255,.06); margin-top:40px; }
+
+/* 响应式 */
+@media (max-width:768px) {
+  .navbar { padding:12px 16px; }
+  .navbar .logo { font-size:16px; }
+  .module-header { padding:24px 20px; }
+  .module-header h1 { font-size:20px; }
+  .card { padding:18px; }
+  .upload-zone { padding:30px 20px; }
+  .stats-grid { grid-template-columns:repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 顶部导航 ===== -->
+<div class="navbar">
+  <div class="logo">🧬 BioFin<span>智投引擎</span></div>
+  <div class="nav-right">
+    <span class="nav-link active">模块1 · 文档解析</span>
+    <span class="nav-link">模块2 · 信息抽取</span>
+    <span class="nav-link">模块3 · 知识库</span>
+    <span class="module-badge">P1 核心 · 支撑层</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ===== 模块头部 ===== -->
+  <div class="module-header">
+    <div class="mh-tag">细化模块 #1 ｜ P1 核心 ｜ 支撑层</div>
+    <h1>文档解析与OCR引擎 <span>Document Parsing & OCR Engine</span></h1>
+    <p>支持 PDF / Word / PPT / 图片 多格式解析，实现文本提取、表格抽取、OCR识别、版式还原与章节定位，为后续结构化信息抽取与AI诊断提供高质量数据底座。</p>
+    <div class="mh-meta">
+      <span>优先级：<b>P1 核心</b></span>
+      <span>前置依赖：<b>无</b></span>
+      <span>开发周期：<b>第1-2周</b></span>
+      <span>验收标准：<b>解析成功率 ≥95%</b></span>
+    </div>
+  </div>
+
+  <!-- ===== 上传区域 ===== -->
+  <div class="card" id="uploadCard">
+    <h2><span class="num">1</span>文件上传 <span class="sub">Upload Document</span></h2>
+    <p class="desc">支持上传 <b>PDF / Word / PPT / 图片</b> 格式的商业计划书（BP），系统将自动进行文档解析与OCR识别。</p>
+
+    <div class="upload-zone" id="uploadZone" onclick="handleUploadClick()">
+      <div class="uz-icon">📄</div>
+      <h3>拖拽文件到此处，或点击上传</h3>
+      <p>支持 PDF / Word / PPT / 图片 格式</p>
+      <button class="uz-btn" onclick="event.stopPropagation();handleUploadClick()">选择文件</button>
+      <div class="uz-formats">支持格式：.pdf .docx .pptx .png .jpg ｜ 文件大小 ≤ 50MB</div>
+    </div>
+
+    <div class="file-types">
+      <span class="file-type active" onclick="selectFileType(this,'pdf')">📕 PDF</span>
+      <span class="file-type" onclick="selectFileType(this,'word')">📘 Word</span>
+      <span class="file-type" onclick="selectFileType(this,'ppt')">📙 PPT</span>
+      <span class="file-type" onclick="selectFileType(this,'image')">🖼️ 图片</span>
+    </div>
+  </div>
+
+  <!-- ===== 解析进度 ===== -->
+  <div class="card parse-progress" id="parseProgress">
+    <div class="pp-icon">⚙️</div>
+    <h3 id="parseTitle">正在解析文档...</h3>
+    <p id="parseFile">文件：BP_示例.pdf</p>
+    <div class="pp-bar"><div class="pp-bar-fill" id="ppBarFill" style="width:0%"></div></div>
+    <div class="pp-steps" id="ppSteps">
+      <div class="pp-step" data-step="1"><span class="ps-icon">📄</span><span class="ps-text">文件格式识别与加载</span><span class="ps-status"></span></div>
+      <div class="pp-step" data-step="2"><span class="ps-icon">📝</span><span class="ps-text">文本内容提取</span><span class="ps-status"></span></div>
+      <div class="pp-step" data-step="3"><span class="ps-icon">📊</span><span class="ps-text">表格结构识别与抽取</span><span class="ps-status"></span></div>
+      <div class="pp-step" data-step="4"><span class="ps-icon">🖼️</span><span class="ps-text">图片OCR文字识别</span><span class="ps-status"></span></div>
+      <div class="pp-step" data-step="5"><span class="ps-icon">📐</span><span class="ps-text">版式还原与章节定位</span><span class="ps-status"></span></div>
+      <div class="pp-step" data-step="6"><span class="ps-icon">✅</span><span class="ps-text">解析完成，生成结构化数据</span><span class="ps-status"></span></div>
+    </div>
+  </div>
+
+  <!-- ===== 解析结果 ===== -->
+  <div class="parse-result" id="parseResult">
+
+    <!-- 统计卡片 -->
+    <div class="card">
+      <h2><span class="num">2</span>解析统计 <span class="sub">Parse Statistics</span></h2>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="st-value" id="statPages">0<span>页</span></div><div class="st-label">总页数</div></div>
+        <div class="stat-card"><div class="st-value" id="statChars">0<span>字</span></div><div class="st-label">提取文本</div></div>
+        <div class="stat-card"><div class="st-value" id="statTables">0<span>个</span></div><div class="st-label">识别表格</div></div>
+        <div class="stat-card"><div class="st-value" id="statImages">0<span>张</span></div><div class="st-label">OCR图片</div></div>
+        <div class="stat-card"><div class="st-value" id="statChapters">0<span>章</span></div><div class="st-label">识别章节</div></div>
+        <div class="stat-card"><div class="st-value" id="statAccuracy">0<span>%</span></div><div class="st-label">OCR准确率</div></div>
+      </div>
+    </div>
+
+    <!-- 标签页 -->
+    <div class="card">
+      <h2><span class="num">3</span>解析结果 <span class="sub">Parse Results</span></h2>
+
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab(this,'tab-chapters')">📑 章节定位</div>
+        <div class="tab" onclick="switchTab(this,'tab-text')">📝 文本提取</div>
+        <div class="tab" onclick="switchTab(this,'tab-tables')">📊 表格抽取</div>
+        <div class="tab" onclick="switchTab(this,'tab-ocr')">🖼️ OCR识别</div>
+        <div class="tab" onclick="switchTab(this,'tab-layout')">📐 版式还原</div>
+      </div>
+
+      <!-- 章节定位 -->
+      <div class="tab-content active" id="tab-chapters">
+        <div class="chapter-tree" id="chapterTree"></div>
+      </div>
+
+      <!-- 文本提取 -->
+      <div class="tab-content" id="tab-text">
+        <div class="text-preview" id="textPreview"></div>
+      </div>
+
+      <!-- 表格抽取 -->
+      <div class="tab-content" id="tab-tables">
+        <div class="table-preview" id="tablePreview"></div>
+      </div>
+
+      <!-- OCR识别 -->
+      <div class="tab-content" id="tab-ocr">
+        <div class="ocr-grid" id="ocrGrid"></div>
+      </div>
+
+      <!-- 版式还原 -->
+      <div class="tab-content" id="tab-layout">
+        <div class="layout-preview" id="layoutPreview"></div>
+      </div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="action-bar">
+      <button class="action-btn primary" onclick="nextModule()">下一步：结构化信息抽取 →</button>
+      <button class="action-btn secondary" onclick="resetAll()">🔄 重新上传</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  BioFin智投引擎 · 细化模块 #1：文档解析与OCR引擎 — 交互式Demo<br>
+  本页面为演示用途，所有数据均为模拟数据
+</div>
+
+<script>
+// ============ 全局状态 ============
+let currentFileType = 'pdf';
+let parseTimer = null;
+
+// ============ 文件类型选择 ============
+function selectFileType(el, type) {
+  currentFileType = type;
+  document.querySelectorAll('.file-type').forEach(f => f.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ============ 上传处理 ============
+function handleUploadClick() {
+  // 模拟文件选择后直接开始解析
+  startParsing();
+}
+
+// ============ 开始解析 ============
+function startParsing() {
+  // 隐藏上传卡片，显示解析进度
+  document.getElementById('uploadCard').style.display = 'none';
+  document.getElementById('parseResult').classList.remove('show');
+  const pp = document.getElementById('parseProgress');
+  pp.classList.add('show');
+
+  const fileNames = {
+    pdf: 'XX生物_商业计划书_v3.2.pdf',
+    word: 'XX生物_商业计划书_v3.2.docx',
+    ppt: 'XX生物_商业计划书_v3.2.pptx',
+    image: 'BP_封面_扫描件.png'
+  };
+  document.getElementById('parseFile').textContent = '文件：' + fileNames[currentFileType];
+
+  // 重置进度
+  const steps = document.querySelectorAll('.pp-step');
+  steps.forEach(s => { s.classList.remove('active','done'); s.querySelector('.ps-status').textContent = ''; });
+  document.getElementById('ppBarFill').style.width = '0%';
+
+  let currentStep = 0;
+  let progress = 0;
+
+  const stepInterval = setInterval(() => {
+    if (currentStep < steps.length) {
+      if (currentStep > 0) {
+        steps[currentStep-1].classList.remove('active');
+        steps[currentStep-1].classList.add('done');
+        steps[currentStep-1].querySelector('.ps-status').textContent = '✓';
+      }
+      steps[currentStep].classList.add('active');
+      currentStep++;
+    }
+
+    progress += 2;
+    if (progress > 100) progress = 100;
+    document.getElementById('ppBarFill').style.width = progress + '%';
+
+    if (progress >= 100) {
+      clearInterval(stepInterval);
+      setTimeout(() => {
+        showResult();
+      }, 500);
+    }
+  }, 100);
+}
+
+// ============ 显示解析结果 ============
+function showResult() {
+  document.getElementById('parseProgress').classList.remove('show');
+  const result = document.getElementById('parseResult');
+  result.classList.add('show');
+
+  // 更新统计
+  document.getElementById('statPages').innerHTML = '32<span>页</span>';
+  document.getElementById('statChars').innerHTML = '18,560<span>字</span>';
+  document.getElementById('statTables').innerHTML = '8<span>个</span>';
+  document.getElementById('statImages').innerHTML = '12<span>张</span>';
+  document.getElementById('statChapters').innerHTML = '9<span>章</span>';
+  document.getElementById('statAccuracy').innerHTML = '96.8<span>%</span>';
+
+  // 渲染章节树
+  renderChapters();
+  // 渲染文本
+  renderText();
+  // 渲染表格
+  renderTables();
+  // 渲染OCR
+  renderOCR();
+  // 渲染版式
+  renderLayout();
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============ 渲染章节树 ============
+function renderChapters() {
+  const chapters = [
+    { icon: '🏢', name: '第一章 · 公司概况', pages: 'P1-3', status: 'ok', statusText: '已解析' },
+    { icon: '👥', name: '第二章 · 核心团队', pages: 'P4-6', status: 'ok', statusText: '已解析' },
+    { icon: '🎯', name: '第三章 · 市场分析', pages: 'P7-12', status: 'ok', statusText: '已解析' },
+    { icon: '🧬', name: '第四章 · 管线布局', pages: 'P13-18', status: 'ok', statusText: '已解析' },
+    { icon: '📊', name: '第五章 · 临床数据', pages: 'P19-22', status: 'ocr', statusText: 'OCR识别' },
+    { icon: '💼', name: '第六章 · 商业模式', pages: 'P23-25', status: 'ok', statusText: '已解析' },
+    { icon: '💰', name: '第七章 · 财务预测', pages: 'P26-28', status: 'ok', statusText: '已解析' },
+    { icon: '📈', name: '第八章 · 融资计划', pages: 'P29-30', status: 'warn', statusText: '部分缺失' },
+    { icon: '⚠️', name: '第九章 · 风险提示', pages: 'P31-32', status: 'ok', statusText: '已解析' }
+  ];
+
+  document.getElementById('chapterTree').innerHTML = chapters.map((c, i) => `
+    <div class="ct-item" onclick="highlightChapter(${i})">
+      <span class="ct-icon">${c.icon}</span>
+      <span class="ct-name">${c.name}</span>
+      <span class="ct-pages">${c.pages}</span>
+      <span class="ct-status ${c.status}">${c.statusText}</span>
+    </div>
+  `).join('');
+}
+
+function highlightChapter(index) {
+  document.querySelectorAll('.ct-item').forEach((el, i) => {
+    el.classList.toggle('active', i === index);
+  });
+}
+
+// ============ 渲染文本 ============
+function renderText() {
+  const lines = [
+    { page: 'P1', text: 'XX生物科技有限公司', highlight: true },
+    { page: 'P1', text: '商业计划书（Business Plan）', highlight: true },
+    { page: 'P1', text: '版本：V3.2 ｜ 日期：2026年6月' },
+    { page: 'P2', text: '公司概况：XX生物成立于2021年，专注于肿瘤免疫治疗领域创新药物研发。' },
+    { page: 'P2', text: '核心管线：PD-1/PD-L1双特异性抗体（XX-001），目前处于临床II期。' },
+    { page: 'P3', text: '核心团队：创始人具有20年+生物医药研发经验，曾任职于跨国药企。' },
+    { page: 'P4', text: '市场分析：全球肿瘤免疫治疗市场规模预计2030年达1,200亿美元。' },
+    { page: 'P5', text: '竞争格局：主要竞品包括康方生物AK112、百济神州等。' },
+    { page: 'P7', text: '管线布局：XX-001（临床II期）、XX-002（临床I期）、XX-003（临床前）。' },
+    { page: 'P8', text: '临床数据：II期中期数据（n=120），ORR 42.5%，PFS 8.2个月。' },
+    { page: 'P9', text: '商业模式：自主研发 + BD合作授权双轮驱动。' },
+    { page: 'P10', text: '财务预测：2026年预计营收5,000万元，2028年预计营收3.5亿元。' },
+    { page: 'P11', text: '融资计划：拟融资2亿元，投前估值8亿元，用于临床推进与团队扩充。' },
+    { page: 'P12', text: '风险提示：临床研发失败风险、市场竞争风险、政策监管风险。' }
+  ];
+
+  document.getElementById('textPreview').innerHTML = lines.map(l => `
+    <div class="tp-line ${l.highlight ? 'highlight' : ''}">
+      <span class="tp-page">${l.page}</span>
+      <span class="tp-text">${l.highlight ? '<b>' + l.text + '</b>' : l.text}</span>
+    </div>
+  `).join('');
+}
+
+// ============ 渲染表格 ============
+function renderTables() {
+  const tables = [
+    {
+      title: '表1 · 核心管线一览',
+      headers: ['管线代号', '靶点', '适应症', '临床阶段', '预计里程碑'],
+      rows: [
+        ['XX-001', 'PD-1/PD-L1', '非小细胞肺癌', '临床II期', '2026Q4 中期数据'],
+        ['XX-002', 'HER2', '乳腺癌', '临床I期', '2027Q1 完成I期'],
+        ['XX-003', 'CLDN18.2', '胃癌', '临床前', '2026Q3 IND申报']
+      ]
+    },
+    {
+      title: '表2 · 财务预测摘要',
+      headers: ['年度', '营收（万元）', '研发投入（万元）', '净利润（万元）', '现金余额（万元）'],
+      rows: [
+        ['2026E', '5,000', '8,000', '-6,500', '12,000'],
+        ['2027E', '15,000', '12,000', '-8,000', '8,000'],
+        ['2028E', '35,000', '15,000', '2,000', '15,000']
+      ]
+    },
+    {
+      title: '表3 · 融资计划',
+      headers: ['融资轮次', '融资金额', '投前估值', '稀释比例', '资金用途'],
+      rows: [
+        ['A轮', '2亿元', '8亿元', '20%', '临床推进/团队扩充'],
+        ['B轮（规划）', '3亿元', '15亿元', '16.7%', 'III期临床/商业化准备']
+      ]
+    }
+  ];
+
+  document.getElementById('tablePreview').innerHTML = tables.map(t => `
+    <div style="margin-bottom:20px;">
+      <div style="font-size:13px; font-weight:700; color:#ffd700; margin-bottom:8px;">${t.title}</div>
+      <table>
+        <tr>${t.headers.map(h => `<th>${h}</th>`).join('')}</tr>
+        ${t.rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}
+      </table>
+    </div>
+  `).join('');
+}
+
+// ============ 渲染OCR ============
+function renderOCR() {
+  const ocrItems = [
+    { title: '图1 · 临床数据图表', conf: 'high', confText: '高置信度 98.2%', text: 'II期中期数据：<b>ORR 42.5%</b>（n=120），<b>PFS 8.2个月</b>，<b>OS 未达到</b>。数据读出时间：2026年Q4。', loc: 'P19 · 临床数据章节' },
+    { title: '图2 · 市场容量图表', conf: 'high', confText: '高置信度 97.5%', text: '全球肿瘤免疫治疗市场规模：<b>2025年 850亿美元</b>，<b>2030年 1,200亿美元</b>，CAGR <b>7.1%</b>。', loc: 'P8 · 市场分析章节' },
+    { title: '图3 · 管线进度图', conf: 'mid', confText: '中置信度 89.3%', text: 'XX-001 临床II期（<b>2025Q3启动</b>），XX-002 临床I期（<b>2026Q1启动</b>），XX-003 临床前（<b>IND准备中</b>）。', loc: 'P14 · 管线布局章节' },
+    { title: '图4 · 股权结构图', conf: 'mid', confText: '中置信度 87.8%', text: '创始人团队 <b>45%</b>，机构投资者 <b>35%</b>，员工期权池 <b>15%</b>，其他 <b>5%</b>。', loc: 'P3 · 公司概况章节' },
+    { title: '图5 · 财务预测图表', conf: 'high', confText: '高置信度 96.1%', text: '2026E营收 <b>5,000万元</b>，2027E营收 <b>15,000万元</b>，2028E营收 <b>35,000万元</b>。', loc: 'P27 · 财务预测章节' },
+    { title: '图6 · 竞品对比图', conf: 'low', confText: '低置信度 72.4%', text: '与康方生物AK112、百济神州等竞品对比，<b>XX-001在安全性方面具有潜在优势</b>。', loc: 'P16 · 竞争格局章节' }
+  ];
+
+  document.getElementById('ocrGrid').innerHTML = ocrItems.map(o => `
+    <div class="ocr-card">
+      <div class="oc-head">
+        <span class="oc-title">${o.title}</span>
+        <span class="oc-conf ${o.conf}">${o.confText}</span>
+      </div>
+      <div class="oc-text">${o.text}</div>
+      <div class="oc-loc">📍 位置：${o.loc}</div>
+    </div>
+  `).join('');
+}
+
+// ============ 渲染版式 ============
+function renderLayout() {
+  const layouts = [
+    { icon: '📄', title: '封面页', desc: '识别到公司Logo、公司名称、BP标题、版本号与日期', meta: 'P1 ｜ 版式类型：封面' },
+    { icon: '📑', title: '目录页', desc: '识别到9个章节的目录结构，含页码索引', meta: 'P2 ｜ 版式类型：目录' },
+    { icon: '📝', title: '正文页', desc: '识别到标题层级（H1/H2/H3）、正文段落、列表结构', meta: 'P3-28 ｜ 版式类型：正文' },
+    { icon: '📊', title: '数据表格页', desc: '识别到8个数据表格，含表头、行列结构、数据单元格', meta: 'P13-28 ｜ 版式类型：表格' },
+    { icon: '🖼️', title: '图表页', desc: '识别到12张图片，其中6张包含文字需OCR识别', meta: 'P8-27 ｜ 版式类型：图表' },
+    { icon: '📈', title: '财务数据页', desc: '识别到财务预测表格与图表，含年度数据对比', meta: 'P26-28 ｜ 版式类型：财务' }
+  ];
+
+  document.getElementById('layoutPreview').innerHTML = layouts.map(l => `
+    <div class="lp-item">
+      <div class="lp-icon">${l.icon}</div>
+      <div class="lp-body">
+        <div class="lp-title">${l.title}</div>
+        <div class="lp-desc">${l.desc}</div>
+        <div class="lp-meta">${l.meta}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============ 标签页切换 ============
+function switchTab(el, tabId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+}
+
+// ============ 下一步 ============
+function nextModule() {
+  alert('模块2：结构化信息抽取引擎（开发中）\n\n将自动抽取公司信息、管线数据、财务数据、融资条款等关键字段。');
+}
+
+// ============ 重置 ============
+function resetAll() {
+  document.getElementById('uploadCard').style.display = 'block';
+  document.getElementById('parseResult').classList.remove('show');
+  document.getElementById('parseProgress').classList.remove('show');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============ 拖拽上传 ============
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  uploadZone.classList.add('dragging');
+});
+uploadZone.addEventListener('dragleave', () => {
+  uploadZone.classList.remove('dragging');
+});
+uploadZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragging');
+  startParsing();
+});
+</script>
+</body>
+</html>

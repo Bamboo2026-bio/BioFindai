@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BioFin智投引擎 · 模块16：C3 资金使用计划审查</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; background:#0f2027; color:#e0e0e0; min-height:100vh; }
+
+/* ===== 顶部导航 ===== */
+.navbar { background:rgba(0,0,0,.5); border-bottom:1px solid rgba(255,255,255,.08); padding:14px 30px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; backdrop-filter:blur(10px); }
+.navbar .logo { font-size:20px; font-weight:800; color:#ffd700; }
+.navbar .logo span { color:#00ff88; }
+.navbar .nav-right { display:flex; gap:16px; align-items:center; }
+.navbar .nav-link { color:#9ca3af; font-size:13px; cursor:pointer; padding:6px 14px; border-radius:6px; transition:all .2s; }
+.navbar .nav-link:hover { color:#fff; background:rgba(255,255,255,.08); }
+.navbar .nav-link.active { color:#ffd700; background:rgba(255,215,0,.1); }
+.navbar .module-badge { background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; font-size:11px; font-weight:800; padding:4px 12px; border-radius:20px; letter-spacing:1px; }
+
+/* ===== 主容器 ===== */
+.container { max-width:1200px; margin:0 auto; padding:24px 24px 60px; }
+
+/* ===== 模块头部 ===== */
+.module-header { background:linear-gradient(135deg,#0f2027,#203a43,#2c5364); border-radius:16px; padding:32px 36px; margin-bottom:24px; position:relative; overflow:hidden; }
+.module-header::after { content:""; position:absolute; right:-40px; top:-40px; width:180px; height:180px; border-radius:50%; background:rgba(255,215,0,.06); }
+.module-header .mh-tag { display:inline-block; background:rgba(255,215,0,.15); color:#ffd700; border:1px solid rgba(255,215,0,.4); padding:3px 12px; border-radius:20px; font-size:12px; margin-bottom:12px; letter-spacing:1px; }
+.module-header h1 { font-size:26px; font-weight:800; color:#fff; margin-bottom:8px; }
+.module-header h1 span { color:#ffd700; }
+.module-header p { color:#cbd5e1; font-size:14px; max-width:700px; }
+.module-header .mh-meta { display:flex; gap:20px; margin-top:16px; flex-wrap:wrap; font-size:12px; color:#94a3b8; }
+.module-header .mh-meta b { color:#fff; }
+
+/* ===== 卡片 ===== */
+.card { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:24px 28px; margin-bottom:24px; }
+.card h2 { font-size:18px; font-weight:700; color:#fff; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+.card h2 .num { background:#ffd700; color:#0f2027; width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.card h2 .sub { font-size:12px; color:#6b7280; font-weight:400; }
+.card .desc { color:#9ca3af; font-size:13.5px; margin-bottom:16px; line-height:1.7; }
+.card .desc b { color:#e0e0e0; }
+
+/* ===== 统计 ===== */
+.fund-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:20px; }
+.fund-stat { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:16px; text-align:center; }
+.fund-stat .fs-value { font-size:28px; font-weight:800; color:#ffd700; }
+.fund-stat .fs-value span { font-size:14px; color:#6b7280; font-weight:400; }
+.fund-stat .fs-label { font-size:12px; color:#9ca3af; margin-top:4px; }
+
+/* ===== 内容 ===== */
+.fund-content { display:none; }
+.fund-content.active { display:block; animation:fadeIn .3s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+/* 导航 */
+.fund-nav { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:24px; }
+.fund-nav-item { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:16px; cursor:pointer; transition:all .3s; text-align:center; }
+.fund-nav-item:hover { border-color:#ffd700; transform:translateY(-2px); background:rgba(255,215,0,.05); }
+.fund-nav-item.active { border-color:#ffd700; background:rgba(255,215,0,.08); }
+.fund-nav-item .fni-icon { font-size:28px; margin-bottom:8px; }
+.fund-nav-item .fni-name { font-size:14px; font-weight:700; color:#fff; }
+.fund-nav-item .fni-count { font-size:11px; color:#6b7280; margin-top:4px; }
+
+/* 评估卡片 */
+.fund-card { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:16px; margin-bottom:12px; }
+.fund-card .fc-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.fund-card .fc-title { font-size:14px; font-weight:700; color:#fff; }
+.fund-card .fc-score { font-size:14px; font-weight:800; color:#ffd700; }
+.fund-card .fc-desc { font-size:12.5px; color:#9ca3af; line-height:1.6; }
+.fund-card .fc-desc b { color:#e0e0e0; }
+.fund-card .fc-suggestion { font-size:12px; color:#4aa8ff; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,.06); }
+
+/* 评分环 */
+.score-ring { display:flex; align-items:center; justify-content:center; gap:40px; margin-bottom:20px; flex-wrap:wrap; }
+.score-ring .ring { width:160px; height:160px; border-radius:50%; display:flex; align-items:center; justify-content:center; position:relative; }
+.score-ring .ring .ring-inner { width:130px; height:130px; border-radius:50%; background:#0f2027; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.score-ring .ring .ring-inner .score { font-size:36px; font-weight:800; color:#ffd700; }
+.score-ring .ring .ring-inner .score-label { font-size:12px; color:#9ca3af; }
+.score-ring .ring-info { max-width:300px; }
+.score-ring .ring-info .ri-title { font-size:16px; font-weight:700; color:#fff; margin-bottom:8px; }
+.score-ring .ring-info .ri-desc { font-size:13px; color:#9ca3af; line-height:1.7; }
+
+/* 数据表格 */
+.data-table { width:100%; border-collapse:collapse; font-size:13px; }
+.data-table th { background:rgba(255,255,255,.06); color:#e0e0e0; padding:10px 12px; text-align:left; font-weight:600; white-space:nowrap; }
+.data-table td { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.06); color:#9ca3af; }
+.data-table td b { color:#fff; }
+.data-table tr:hover td { background:rgba(255,255,255,.03); }
+.data-table .tag { font-size:11px; padding:2px 8px; border-radius:8px; font-weight:600; }
+.data-table .tag.good { background:rgba(0,255,136,.12); color:#00ff88; }
+.data-table .tag.warn { background:rgba(255,215,0,.12); color:#ffd700; }
+.data-table .tag.bad { background:rgba(255,68,68,.12); color:#ff4444; }
+
+/* 操作按钮 */
+.action-bar { display:flex; gap:14px; justify-content:center; margin-top:24px; flex-wrap:wrap; }
+.action-btn { padding:12px 28px; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; border:none; transition:all .2s; }
+.action-btn.primary { background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; }
+.action-btn.primary:hover { transform:translateY(-2px); box-shadow:0 4px 20px rgba(255,215,0,.3); }
+.action-btn.secondary { background:rgba(255,255,255,.08); color:#e0e0e0; border:1px solid rgba(255,255,255,.15); }
+.action-btn.secondary:hover { background:rgba(255,255,255,.15); }
+
+/* 页脚 */
+.footer { text-align:center; padding:20px; color:#555; font-size:12px; border-top:1px solid rgba(255,255,255,.06); margin-top:40px; }
+
+/* 响应式 */
+@media (max-width:768px) {
+  .navbar { padding:12px 16px; }
+  .navbar .logo { font-size:16px; }
+  .module-header { padding:24px 20px; }
+  .module-header h1 { font-size:20px; }
+  .card { padding:18px; }
+  .fund-stats { grid-template-columns:repeat(2,1fr); }
+  .fund-nav { grid-template-columns:repeat(2,1fr); }
+  .score-ring { flex-direction:column; gap:20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 顶部导航 ===== -->
+<div class="navbar">
+  <div class="logo">🧬 BioFin<span>智投引擎</span></div>
+  <div class="nav-right">
+    <span class="nav-link">模块1 · 文档解析</span>
+    <span class="nav-link">模块2 · 信息抽取</span>
+    <span class="nav-link">模块3 · 知识库</span>
+    <span class="nav-link">模块4 · 18A案例库</span>
+    <span class="nav-link">模块5 · 估值参数库</span>
+    <span class="nav-link">模块6 · 大模型微调</span>
+    <span class="nav-link">模块7 · RAG检索增强</span>
+    <span class="nav-link">模块8 · 结构完整性扫描</span>
+    <span class="nav-link">模块9 · 商业逻辑闭环校验</span>
+    <span class="nav-link">模块10 · 叙事流畅度评估</span>
+    <span class="nav-link">模块11 · 临床数据解析与分期校验</span>
+    <span class="nav-link">模块12 · 技术差异化与竞争格局</span>
+    <span class="nav-link">模块13 · 专利壁垒与IP评估</span>
+    <span class="nav-link">模块14 · 估值合理性校验</span>
+    <span class="nav-link">模块15 · 融资金额与稀释测算</span>
+    <span class="nav-link active">模块16 · 资金使用计划审查</span>
+    <span class="module-badge">P1 核心 · 应用层</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ===== 模块头部 ===== -->
+  <div class="module-header">
+    <div class="mh-tag">细化模块 #16 ｜ P1 核心 ｜ 应用层 ｜ C3</div>
+    <h1>C3 资金使用计划审查 <span>Fund Utilization Plan Review</span></h1>
+    <p>审查BP中资金使用计划，分析资金用途合理性、使用效率、里程碑匹配，识别资金浪费与使用风险。</p>
+    <div class="mh-meta">
+      <span>优先级：<b>P1 核心</b></span>
+      <span>前置依赖：<b>模块1/2/3/4（文档解析/信息抽取/知识库/18A案例库）</b></span>
+      <span>开发周期：<b>第11-12周</b></span>
+      <span>验收标准：<b>资金用途识别准确率≥90%</b></span>
+    </div>
+  </div>
+
+  <!-- ===== 统计 ===== -->
+  <div class="card">
+    <h2><span class="num">1</span>审查总览 <span class="sub">Review Overview</span></h2>
+    <div class="fund-stats">
+      <div class="fund-stat"><div class="fs-value">3<span>亿</span></div><div class="fs-label">融资总额</div></div>
+      <div class="fund-stat"><div class="fs-value">5<span>项</span></div><div class="fs-label">资金用途</div></div>
+      <div class="fund-stat"><div class="fs-value">4<span>个</span></div><div class="fs-label">里程碑</div></div>
+      <div class="fund-stat"><div class="fs-value">2<span>项</span></div><div class="fs-label">使用风险</div></div>
+      <div class="fund-stat"><div class="fs-value">74<span>分</span></div><div class="fs-label">资金计划评分</div></div>
+      <div class="fund-stat"><div class="fs-value">90<span>%</span></div><div class="fs-label">用途识别准确率</div></div>
+    </div>
+  </div>
+
+  <!-- ===== 资金计划评分 ===== -->
+  <div class="card">
+    <h2><span class="num">2</span>资金计划评分 <span class="sub">Fund Plan Score</span></h2>
+    <div class="score-ring">
+      <div class="ring" style="background:conic-gradient(#ffd700 0% 74%, rgba(255,255,255,.08) 74% 100%);">
+        <div class="ring-inner">
+          <div class="score">74</div>
+          <div class="score-label">/ 100 分</div>
+        </div>
+      </div>
+      <div class="ring-info">
+        <div class="ri-title">资金使用计划评分：74分（良好）</div>
+        <div class="ri-desc">
+          资金使用计划整体合理，但存在<b style="color:#ffd700;">研发投入占比偏低</b>、<b style="color:#ff4444;">管理费用偏高</b>等问题，建议优化后重新提交。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 资金使用审查 ===== -->
+  <div class="card">
+    <h2><span class="num">3</span>资金使用审查详情 <span class="sub">Fund Utilization Review Detail</span></h2>
+
+    <div class="fund-nav">
+      <div class="fund-nav-item active" onclick="switchFund(this,'fund-usage')">
+        <div class="fni-icon">💰</div>
+        <div class="fni-name">资金用途</div>
+        <div class="fni-count">5项用途</div>
+      </div>
+      <div class="fund-nav-item" onclick="switchFund(this,'fund-efficiency')">
+        <div class="fni-icon">📈</div>
+        <div class="fni-name">使用效率</div>
+        <div class="fni-count">4项分析</div>
+      </div>
+      <div class="fund-nav-item" onclick="switchFund(this,'fund-milestone')">
+        <div class="fni-icon">🎯</div>
+        <div class="fni-name">里程碑匹配</div>
+        <div class="fni-count">4个里程碑</div>
+      </div>
+    </div>
+
+    <!-- ===== 资金用途 ===== -->
+    <div class="fund-content active" id="fund-usage">
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <tr>
+            <th>用途</th><th>金额</th><th>占比</th><th>行业基准</th><th>状态</th>
+          </tr>
+          <tr>
+            <td><b>临床研发</b></td>
+            <td>1.8亿元</td>
+            <td>60%</td>
+            <td>55-65%</td>
+            <td><span class="tag good">✅ 合理</span></td>
+          </tr>
+          <tr>
+            <td><b>生产建设</b></td>
+            <td>0.6亿元</td>
+            <td>20%</td>
+            <td>15-20%</td>
+            <td><span class="tag good">✅ 合理</span></td>
+          </tr>
+          <tr>
+            <td><b>运营费用</b></td>
+            <td>0.45亿元</td>
+            <td>15%</td>
+            <td>10-15%</td>
+            <td><span class="tag warn">⚠️ 偏高</span></td>
+          </tr>
+          <tr>
+            <td><b>管理费用</b></td>
+            <td>0.15亿元</td>
+            <td>5%</td>
+            <td>3-5%</td>
+            <td><span class="tag warn">⚠️ 偏高</span></td>
+          </tr>
+          <tr>
+            <td><b>其他</b></td>
+            <td>0亿元</td>
+            <td>0%</td>
+            <td>0-5%</td>
+            <td><span class="tag good">✅ 合理</span></td>
+          </tr>
+        </table>
+      </div>
+      <div style="margin-top:12px; font-size:12px; color:#6b7280;">
+        <b style="color:#ffd700;">注：</b>运营费用与管理费用占比偏高，建议优化资金分配，提高研发投入占比。
+      </div>
+    </div>
+
+    <!-- ===== 使用效率 ===== -->
+    <div class="fund-content" id="fund-efficiency">
+      <div class="fund-card">
+        <div class="fc-head">
+          <span class="fc-title">✅ 研发投入效率</span>
+          <span class="fc-score">82分</span>
+        </div>
+        <div class="fc-desc">
+          <b>评估：</b>临床研发投入占比60%，与行业基准匹配，研发投入效率较高。<br>
+          <b>亮点：</b>资金主要投向核心研发，符合创新药企业资金使用逻辑。
+        </div>
+      </div>
+      <div class="fund-card">
+        <div class="fc-head">
+          <span class="fc-title">⚠️ 运营费用效率</span>
+          <span class="fc-score">65分</span>
+        </div>
+        <div class="fc-desc">
+          <b>评估：</b>运营费用占比15%，高于行业基准（10-15%），可能存在运营效率问题。<br>
+          <b>影响：</b>运营费用偏高可能压缩研发投入空间。
+        </div>
+        <div class="fc-suggestion">💡 建议：优化运营费用结构，控制行政与市场费用，提高资金使用效率。</div>
+      </div>
+      <div class="fund-card">
+        <div class="fc-head">
+          <span class="fc-title">✅ 资金使用节奏</span>
+          <span class="fc-score">78分</span>
+        </div>
+        <div class="fc-desc">
+          <b>评估：</b>资金使用节奏与临床研发进度匹配，分阶段投入合理。<br>
+          <b>亮点：</b>资金分阶段投入，可降低资金浪费风险。
+        </div>
+      </div>
+      <div class="fund-card">
+        <div class="fc-head">
+          <span class="fc-title">⚠️ 资金使用透明度</span>
+          <span class="fc-score">68分</span>
+        </div>
+        <div class="fc-desc">
+          <b>评估：</b>BP中资金使用计划描述不够详细，未提供分季度资金使用明细。<br>
+          <b>影响：</b>投资人难以跟踪资金使用进度与效果。
+        </div>
+        <div class="fc-suggestion">💡 建议：提供分季度资金使用明细，提高资金使用透明度，增强投资人信心。</div>
+      </div>
+    </div>
+
+    <!-- ===== 里程碑匹配 ===== -->
+    <div class="fund-content" id="fund-milestone">
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <tr>
+            <th>里程碑</th><th>时间</th><th>资金需求</th><th>匹配度</th>
+          </tr>
+          <tr>
+            <td><b>AK112 II期临床完成</b></td>
+            <td>2027年Q2</td>
+            <td>1.2亿元</td>
+            <td><span class="tag good">✅ 匹配</span></td>
+          </tr>
+          <tr>
+            <td><b>AK112 II期数据读出</b></td>
+            <td>2027年Q4</td>
+            <td>0.6亿元</td>
+            <td><span class="tag good">✅ 匹配</span></td>
+          </tr>
+          <tr>
+            <td><b>AK113 I期临床启动</b></td>
+            <td>2028年Q1</td>
+            <td>0.5亿元</td>
+            <td><span class="tag warn">⚠️ 资金不足</span></td>
+          </tr>
+          <tr>
+            <td><b>AK114 II期临床启动</b></td>
+            <td>2028年Q2</td>
+            <td>0.7亿元</td>
+            <td><span class="tag warn">⚠️ 资金不足</span></td>
+          </tr>
+        </table>
+      </div>
+      <div style="margin-top:12px; font-size:12px; color:#6b7280;">
+        <b style="color:#ffd700;">注：</b>AK113与AK114里程碑资金需求超出本轮融资覆盖范围，需评估是否启动下一轮融资。
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 资金使用风险 ===== -->
+  <div class="card">
+    <h2><span class="num">4</span>资金使用风险 <span class="sub">Fund Utilization Risk</span></h2>
+    <div class="fund-card">
+      <div class="fc-head">
+        <span class="fc-title">⚠️ 里程碑资金缺口风险</span>
+        <span class="fc-score">中风险</span>
+      </div>
+      <div class="fc-desc">
+        <b>风险：</b>AK113与AK114里程碑资金需求超出本轮融资覆盖范围，存在资金缺口。<br>
+        <b>影响：</b>若无法及时启动下一轮融资，可能影响管线研发进度。
+      </div>
+      <div class="fc-suggestion">💡 建议：评估资金缺口，提前规划下一轮融资时间与金额。</div>
+    </div>
+    <div class="fund-card">
+      <div class="fc-head">
+        <span class="fc-title">⚠️ 运营费用超支风险</span>
+        <span class="fc-score">中风险</span>
+      </div>
+      <div class="fc-desc">
+        <b>风险：</b>运营费用占比15%，高于行业基准，存在超支风险。<br>
+        <b>影响：</b>运营费用超支可能压缩研发投入空间。
+      </div>
+      <div class="fc-suggestion">💡 建议：建立费用预算控制机制，定期审查运营费用使用情况。</div>
+    </div>
+  </div>
+
+  <!-- ===== 审查报告 ===== -->
+  <div class="card">
+    <h2><span class="num">5</span>审查报告 <span class="sub">Review Report</span></h2>
+    <div style="overflow-x:auto;">
+      <table class="data-table">
+        <tr>
+          <th>报告项</th><th>内容</th>
+        </tr>
+        <tr>
+          <td><b>审查时间</b></td>
+          <td>2026-08-23 18:10:00</td>
+        </tr>
+        <tr>
+          <td><b>资金用途</b></td>
+          <td>5项用途 · 3项合理 · 2项偏高</td>
+        </tr>
+        <tr>
+          <td><b>资金计划评分</b></td>
+          <td><span class="tag warn">74分（良好）</span></td>
+        </tr>
+        <tr>
+          <td><b>关键问题</b></td>
+          <td>运营费用偏高、里程碑资金缺口、资金使用透明度不足</td>
+        </tr>
+        <tr>
+          <td><b>改进建议</b></td>
+          <td>优化费用结构、提前规划融资、提供分季度明细</td>
+        </tr>
+        <tr>
+          <td><b>预计改进后评分</b></td>
+          <td><span class="tag good">88分（优秀）</span></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 操作按钮 -->
+  <div class="action-bar">
+    <button class="action-btn primary" onclick="nextModule()">下一步：D1 18A上市可行性评估 →</button>
+    <button class="action-btn secondary" onclick="resetAll()">🔄 重置视图</button>
+  </div>
+
+</div>
+
+<div class="footer">
+  BioFin智投引擎 · 细化模块 #16：C3 资金使用计划审查 — 交互式Demo<br>
+  本页面为演示用途，所有数据均为模拟数据
+</div>
+
+<script>
+// ============ 内容切换 ============
+function switchFund(el, fundId) {
+  document.querySelectorAll('.fund-nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.fund-content').forEach(c => c.classList.remove('active'));
+  document.getElementById(fundId).classList.add('active');
+}
+
+// ============ 下一步 ============
+function nextModule() {
+  alert('模块17：D1 18A上市可行性评估（开发中）\n\n将评估BP中18A上市可行性。');
+}
+
+// ============ 重置 ============
+function resetAll() {
+  document.querySelectorAll('.fund-nav-item').forEach((n, i) => {
+    n.classList.toggle('active', i === 0);
+  });
+  document.querySelectorAll('.fund-content').forEach((c, i) => {
+    c.classList.toggle('active', i === 0);
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BioFin智投引擎 · 模块10：A3 叙事流畅度评估</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; background:#0f2027; color:#e0e0e0; min-height:100vh; }
+
+/* ===== 顶部导航 ===== */
+.navbar { background:rgba(0,0,0,.5); border-bottom:1px solid rgba(255,255,255,.08); padding:14px 30px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; backdrop-filter:blur(10px); }
+.navbar .logo { font-size:20px; font-weight:800; color:#ffd700; }
+.navbar .logo span { color:#00ff88; }
+.navbar .nav-right { display:flex; gap:16px; align-items:center; }
+.navbar .nav-link { color:#9ca3af; font-size:13px; cursor:pointer; padding:6px 14px; border-radius:6px; transition:all .2s; }
+.navbar .nav-link:hover { color:#fff; background:rgba(255,255,255,.08); }
+.navbar .nav-link.active { color:#ffd700; background:rgba(255,215,0,.1); }
+.navbar .module-badge { background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; font-size:11px; font-weight:800; padding:4px 12px; border-radius:20px; letter-spacing:1px; }
+
+/* ===== 主容器 ===== */
+.container { max-width:1200px; margin:0 auto; padding:24px 24px 60px; }
+
+/* ===== 模块头部 ===== */
+.module-header { background:linear-gradient(135deg,#0f2027,#203a43,#2c5364); border-radius:16px; padding:32px 36px; margin-bottom:24px; position:relative; overflow:hidden; }
+.module-header::after { content:""; position:absolute; right:-40px; top:-40px; width:180px; height:180px; border-radius:50%; background:rgba(255,215,0,.06); }
+.module-header .mh-tag { display:inline-block; background:rgba(255,215,0,.15); color:#ffd700; border:1px solid rgba(255,215,0,.4); padding:3px 12px; border-radius:20px; font-size:12px; margin-bottom:12px; letter-spacing:1px; }
+.module-header h1 { font-size:26px; font-weight:800; color:#fff; margin-bottom:8px; }
+.module-header h1 span { color:#ffd700; }
+.module-header p { color:#cbd5e1; font-size:14px; max-width:700px; }
+.module-header .mh-meta { display:flex; gap:20px; margin-top:16px; flex-wrap:wrap; font-size:12px; color:#94a3b8; }
+.module-header .mh-meta b { color:#fff; }
+
+/* ===== 卡片 ===== */
+.card { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:24px 28px; margin-bottom:24px; }
+.card h2 { font-size:18px; font-weight:700; color:#fff; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+.card h2 .num { background:#ffd700; color:#0f2027; width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.card h2 .sub { font-size:12px; color:#6b7280; font-weight:400; }
+.card .desc { color:#9ca3af; font-size:13.5px; margin-bottom:16px; line-height:1.7; }
+.card .desc b { color:#e0e0e0; }
+
+/* ===== 评估统计 ===== */
+.eval-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:20px; }
+.eval-stat { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:16px; text-align:center; }
+.eval-stat .es-value { font-size:28px; font-weight:800; color:#ffd700; }
+.eval-stat .es-value span { font-size:14px; color:#6b7280; font-weight:400; }
+.eval-stat .es-label { font-size:12px; color:#9ca3af; margin-top:4px; }
+
+/* ===== 评估内容 ===== */
+.eval-content { display:none; }
+.eval-content.active { display:block; animation:fadeIn .3s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+/* 评估导航 */
+.eval-nav { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:24px; }
+.eval-nav-item { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:16px; cursor:pointer; transition:all .3s; text-align:center; }
+.eval-nav-item:hover { border-color:#ffd700; transform:translateY(-2px); background:rgba(255,215,0,.05); }
+.eval-nav-item.active { border-color:#ffd700; background:rgba(255,215,0,.08); }
+.eval-nav-item .eni-icon { font-size:28px; margin-bottom:8px; }
+.eval-nav-item .eni-name { font-size:14px; font-weight:700; color:#fff; }
+.eval-nav-item .eni-count { font-size:11px; color:#6b7280; margin-top:4px; }
+
+/* 评估卡片 */
+.eval-card { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:16px; margin-bottom:12px; }
+.eval-card .ec-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.eval-card .ec-title { font-size:14px; font-weight:700; color:#fff; }
+.eval-card .ec-score { font-size:14px; font-weight:800; color:#ffd700; }
+.eval-card .ec-desc { font-size:12.5px; color:#9ca3af; line-height:1.6; }
+.eval-card .ec-desc b { color:#e0e0e0; }
+.eval-card .ec-suggestion { font-size:12px; color:#4aa8ff; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,.06); }
+
+/* 评分环 */
+.score-ring { display:flex; align-items:center; justify-content:center; gap:40px; margin-bottom:20px; flex-wrap:wrap; }
+.score-ring .ring { width:160px; height:160px; border-radius:50%; display:flex; align-items:center; justify-content:center; position:relative; }
+.score-ring .ring .ring-inner { width:130px; height:130px; border-radius:50%; background:#0f2027; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.score-ring .ring .ring-inner .score { font-size:36px; font-weight:800; color:#ffd700; }
+.score-ring .ring .ring-inner .score-label { font-size:12px; color:#9ca3af; }
+.score-ring .ring-info { max-width:300px; }
+.score-ring .ring-info .ri-title { font-size:16px; font-weight:700; color:#fff; margin-bottom:8px; }
+.score-ring .ring-info .ri-desc { font-size:13px; color:#9ca3af; line-height:1.7; }
+
+/* 维度评分条 */
+.dim-scores { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-bottom:20px; }
+.dim-score { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:16px; }
+.dim-score .ds-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.dim-score .ds-name { font-size:13px; font-weight:700; color:#fff; }
+.dim-score .ds-value { font-size:16px; font-weight:800; color:#ffd700; }
+.dim-score .ds-bar { background:rgba(255,255,255,.06); border-radius:8px; height:8px; overflow:hidden; }
+.dim-score .ds-bar .ds-fill { height:100%; border-radius:8px; }
+.dim-score .ds-bar .ds-fill.green { background:linear-gradient(90deg,#00ff88,#00cc66); }
+.dim-score .ds-bar .ds-fill.yellow { background:linear-gradient(90deg,#ffd700,#ff8c00); }
+.dim-score .ds-bar .ds-fill.red { background:linear-gradient(90deg,#ff4444,#ff0000); }
+.dim-score .ds-desc { font-size:11px; color:#6b7280; margin-top:6px; }
+
+/* 数据表格 */
+.data-table { width:100%; border-collapse:collapse; font-size:13px; }
+.data-table th { background:rgba(255,255,255,.06); color:#e0e0e0; padding:10px 12px; text-align:left; font-weight:600; white-space:nowrap; }
+.data-table td { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.06); color:#9ca3af; }
+.data-table td b { color:#fff; }
+.data-table tr:hover td { background:rgba(255,255,255,.03); }
+.data-table .tag { font-size:11px; padding:2px 8px; border-radius:8px; font-weight:600; }
+.data-table .tag.good { background:rgba(0,255,136,.12); color:#00ff88; }
+.data-table .tag.warn { background:rgba(255,215,0,.12); color:#ffd700; }
+.data-table .tag.bad { background:rgba(255,68,68,.12); color:#ff4444; }
+
+/* 操作按钮 */
+.action-bar { display:flex; gap:14px; justify-content:center; margin-top:24px; flex-wrap:wrap; }
+.action-btn { padding:12px 28px; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; border:none; transition:all .2s; }
+.action-btn.primary { background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; }
+.action-btn.primary:hover { transform:translateY(-2px); box-shadow:0 4px 20px rgba(255,215,0,.3); }
+.action-btn.secondary { background:rgba(255,255,255,.08); color:#e0e0e0; border:1px solid rgba(255,255,255,.15); }
+.action-btn.secondary:hover { background:rgba(255,255,255,.15); }
+
+/* 页脚 */
+.footer { text-align:center; padding:20px; color:#555; font-size:12px; border-top:1px solid rgba(255,255,255,.06); margin-top:40px; }
+
+/* 响应式 */
+@media (max-width:768px) {
+  .navbar { padding:12px 16px; }
+  .navbar .logo { font-size:16px; }
+  .module-header { padding:24px 20px; }
+  .module-header h1 { font-size:20px; }
+  .card { padding:18px; }
+  .eval-stats { grid-template-columns:repeat(2,1fr); }
+  .eval-nav { grid-template-columns:repeat(2,1fr); }
+  .score-ring { flex-direction:column; gap:20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 顶部导航 ===== -->
+<div class="navbar">
+  <div class="logo">🧬 BioFin<span>智投引擎</span></div>
+  <div class="nav-right">
+    <span class="nav-link">模块1 · 文档解析</span>
+    <span class="nav-link">模块2 · 信息抽取</span>
+    <span class="nav-link">模块3 · 知识库</span>
+    <span class="nav-link">模块4 · 18A案例库</span>
+    <span class="nav-link">模块5 · 估值参数库</span>
+    <span class="nav-link">模块6 · 大模型微调</span>
+    <span class="nav-link">模块7 · RAG检索增强</span>
+    <span class="nav-link">模块8 · 结构完整性扫描</span>
+    <span class="nav-link">模块9 · 商业逻辑闭环校验</span>
+    <span class="nav-link active">模块10 · 叙事流畅度评估</span>
+    <span class="module-badge">P1 核心 · 应用层</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ===== 模块头部 ===== -->
+  <div class="module-header">
+    <div class="mh-tag">细化模块 #10 ｜ P1 核心 ｜ 应用层 ｜ A3</div>
+    <h1>A3 叙事流畅度评估 <span>Narrative Fluency Assessment</span></h1>
+    <p>评估BP的叙事流畅度，检查故事线是否连贯、逻辑是否清晰、表达是否专业、视觉呈现是否美观，识别叙事断点与表达问题，给出改进建议。</p>
+    <div class="mh-meta">
+      <span>优先级：<b>P1 核心</b></span>
+      <span>前置依赖：<b>模块1/2/8/9（文档解析/信息抽取/结构扫描/逻辑校验）</b></span>
+      <span>开发周期：<b>第7-8周</b></span>
+      <span>验收标准：<b>叙事断点识别准确率≥90%</b></span>
+    </div>
+  </div>
+
+  <!-- ===== 评估统计 ===== -->
+  <div class="card">
+    <h2><span class="num">1</span>评估总览 <span class="sub">Assessment Overview</span></h2>
+    <div class="eval-stats">
+      <div class="eval-stat"><div class="es-value">4<span>维</span></div><div class="es-label">评估维度</div></div>
+      <div class="eval-stat"><div class="es-value">16<span>项</span></div><div class="es-label">评估指标</div></div>
+      <div class="eval-stat"><div class="es-value">3<span>处</span></div><div class="es-label">叙事断点</div></div>
+      <div class="eval-stat"><div class="es-value">5<span>处</span></div><div class="es-label">表达问题</div></div>
+      <div class="eval-stat"><div class="es-value">76<span>分</span></div><div class="es-label">叙事评分</div></div>
+      <div class="eval-stat"><div class="es-value">90<span>%</span></div><div class="es-label">断点识别准确率</div></div>
+    </div>
+  </div>
+
+  <!-- ===== 叙事评分 ===== -->
+  <div class="card">
+    <h2><span class="num">2</span>叙事评分 <span class="sub">Narrative Score</span></h2>
+    <div class="score-ring">
+      <div class="ring" style="background:conic-gradient(#ffd700 0% 76%, rgba(255,255,255,.08) 76% 100%);">
+        <div class="ring-inner">
+          <div class="score">76</div>
+          <div class="score-label">/ 100 分</div>
+        </div>
+      </div>
+      <div class="ring-info">
+        <div class="ri-title">叙事流畅度评分：76分（良好）</div>
+        <div class="ri-desc">
+          BP叙事整体较为流畅，故事线基本连贯。但存在<b style="color:#ffd700;">产品管线章节跳跃</b>、<b style="color:#ffd700;">专业术语使用过多</b>、<b style="color:#ffd700;">图表数据不清晰</b>等问题，建议优化后重新提交。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 维度评分 ===== -->
+  <div class="card">
+    <h2><span class="num">3</span>维度评分 <span class="sub">Dimension Scores</span></h2>
+    <div class="dim-scores">
+      <div class="dim-score">
+        <div class="ds-head">
+          <span class="ds-name">📖 叙事结构</span>
+          <span class="ds-value">82分</span>
+        </div>
+        <div class="ds-bar"><div class="ds-fill green" style="width:82%"></div></div>
+        <div class="ds-desc">故事线基本连贯，章节顺序合理，但产品管线章节存在跳跃</div>
+      </div>
+      <div class="dim-score">
+        <div class="ds-head">
+          <span class="ds-name">✍️ 表达质量</span>
+          <span class="ds-value">74分</span>
+        </div>
+        <div class="ds-bar"><div class="ds-fill yellow" style="width:74%"></div></div>
+        <div class="ds-desc">语言表达专业，但专业术语使用过多，缺乏通俗解释</div>
+      </div>
+      <div class="dim-score">
+        <div class="ds-head">
+          <span class="ds-name">📊 视觉呈现</span>
+          <span class="ds-value">68分</span>
+        </div>
+        <div class="ds-bar"><div class="ds-fill yellow" style="width:68%"></div></div>
+        <div class="ds-desc">图表数据不清晰，部分图表缺乏标注，排版不够美观</div>
+      </div>
+      <div class="dim-score">
+        <div class="ds-head">
+          <span class="ds-name">🎯 说服力</span>
+          <span class="ds-value">80分</span>
+        </div>
+        <div class="ds-bar"><div class="ds-fill green" style="width:80%"></div></div>
+        <div class="ds-desc">核心卖点突出，数据支撑充分，但缺乏投资人视角</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 叙事评估 ===== -->
+  <div class="card">
+    <h2><span class="num">4</span>叙事评估详情 <span class="sub">Narrative Assessment Detail</span></h2>
+
+    <div class="eval-nav">
+      <div class="eval-nav-item active" onclick="switchEval(this,'eval-structure')">
+        <div class="eni-icon">📖</div>
+        <div class="eni-name">叙事结构</div>
+        <div class="eni-count">4项指标</div>
+      </div>
+      <div class="eval-nav-item" onclick="switchEval(this,'eval-expression')">
+        <div class="eni-icon">✍️</div>
+        <div class="eni-name">表达质量</div>
+        <div class="eni-count">4项指标</div>
+      </div>
+      <div class="eval-nav-item" onclick="switchEval(this,'eval-visual')">
+        <div class="eni-icon">📊</div>
+        <div class="eni-name">视觉呈现</div>
+        <div class="eni-count">4项指标</div>
+      </div>
+      <div class="eval-nav-item" onclick="switchEval(this,'eval-persuasion')">
+        <div class="eni-icon">🎯</div>
+        <div class="eni-name">说服力</div>
+        <div class="eni-count">4项指标</div>
+      </div>
+    </div>
+
+    <!-- ===== 叙事结构 ===== -->
+    <div class="eval-content active" id="eval-structure">
+      <div class="eval-card">
+        <div class="ec-head">
+          <span class="ec-title">✅ 故事线连贯性</span>
+          <span class="ec-score">85分</span>
+        </div>
+        <div class="ec-desc">
+          <b>评估：</b>BP整体故事线连贯，从公司定位→产品管线→市场分析→商业模式→发展规划，逻辑递进清晰。<br>
+          <b>亮点：</b>开篇即点明核心卖点，投资人可快速理解项目价值。
+        </div>
+      </div>
+      <div class="eval-card">
+        <div class="ec-head">
+          <span class="ec-title">⚠️ 章节过渡自然度</span>
+          <span class="ec-score">72分</span>
+        </div>
+        <div class="ec-desc">
+          <b>评估：</b>产品管线章节直接从临床II期数据跳跃到技术平台，缺乏过渡说明。<br>
+          <b>影响：</b>投资人可能无法理解管线与技术平台之间的关联。
+        </div>
+        <div class="ec-suggestion">💡 建议：在管线与技术平台之间增加过渡段落，说明技术平台如何支撑管线研发。</div>
+      </div>
+      <div class="eval-card">
+        <div class="ec-head">
+          <span class="ec-title">✅ 重点突出度</span>
+          <span class="ec-score">88分</span>
+        </div>
+        <div class="ec-desc">
+          <b>评估：</b>核心产品（AK112）占据较大篇幅，临床数据展示充分，重点突出。<br>
+          <b>亮点：</b>核心卖点（差异化定位）在多个章节反复强调。
+        </div>
+      </div>
+      <div class="eval-card">
+        <div class="ec-head">
+          <span class="ec-title">⚠️ 信息密度平衡</span>
+          <span class="ec-score">70分</span>
+        </div>
+        <div class="ec-desc">
+          <b>评估：</b>产品管线章节信息密度过高（大量临床数据），而市场分析章节信息密度偏低。<br>
+          <b>影响：</b>投资人阅读体验不佳，重点信息可能被淹没。
+        </div>
+        <div class="ec-suggestion">💡 建议：将临床数据拆分为多个子章节，市场分析补充更多数据支撑。</div>
+      </div>
+    </div>
+
+    <!-- ===== 表达质量 ===== -->
+    <div class="eval-content" id="eval-expression">
+      <div class="eval-card">
+        <div class="ec-head">
+          <span class="ec-title">✅ 语言专业性</span>
+          <span class="ec-score">85分</span>
+        </div>
+        <div class="ec-desc">
+          <b>评估：</b>语言表达专业，使用行业标准术语（IND、NDA、rNPV等），符合生物医药行业规范。<br>
+          <b>亮点：</b>专业术语使用准确，无常识性错误。
+        </div>
+      </div>
+      <div class="eval-card">
+        <div class="ec-head">
+          <span class="ec-title">⚠️ 术语可读性</span>
+          <span class="ec-score">65分</span>
+        </div>
+        <div class="ec-desc">
+          <b>评估：</b>专业术语使用过多，缺乏通俗解释，非专业投资人可能难以理解。<br>
+          <b>影响：</b>降低BP的可读性，影响投资人理解项目价值。
+        </div>
+        <div class="ec-suggestion">💡 建议：首次使用专业术语时增加通俗解释，如"rNPV（风险调整净现值，用于评估药物价值）"。</div>
+      </div>
+      <div class="eval-card">
+        <div class="ec-head">
+          <span class="ec-title">✅ 表达简洁性</span>
+          <span class="ec-score">78分</span>
+        </div>
+        <div class="ec-desc">
+          <b>评估：</b>整体表达简洁，无冗余内容，但部分段落存在重复表述。<br>
+          <b>亮点：</b>核心信息表达清晰，无歧义。
+        </div>
+      </div>
+      <div class="eval-card">
+        <div class="ec-head">
+          <span class="ec-title">⚠️ 数据表述清晰度</span>
+          <span class="ec-score">68分</span>
+        </div>
+        <div class="ec-desc">
+          <b>评估：</b>部分临床数据表述不够清晰，如"ORR 45%"未说明样本量、随访时间等关键信息。<br>
+          <b>影响：</b>投资人无法准确评估临床数据质量。
+        </div>
+        <div class="ec-suggestion">💡 建议：补充临床数据的关键参数（样本量、随访时间、置信区间），提升数据可信度。</div>
+      </div>
+    </div>
+
+    <!-- ===== 视觉呈现 ===== -->
+    <div class="eval-content" id="eval-visual">
+      <div class="eval-card">
+        <div class="ec-head">
+          <span class="ec-title">✅ 图表使用</span>
+          <span class="ec-score">80分</span>
+        </div>
+        <div class="ec-desc">
+          <b>评估：</b>BP中使用了管线图、市场分析图、临床数据图等图表，辅助说明核心信息。<br>
+          <b>亮点：</b>管线图清晰展示各产品临床阶段。
+        </div>
+      </div>
+      <div class="eval-card">
+        <div class="ec-head">
+          <span class="ec-title">⚠️ 图表清晰度</span>
+          <span class="ec-score">62分</span>
+        </div>
+        <div class="ec-desc">
+          <b>评估：</b>部分图表数据不清晰，如市场分析图缺乏数据标注、临床数据图坐标轴不明确。<br>
+          <b>影响：</b>投资人无法准确读取图表信息，降低数据可信度。
+        </div>
+        <div class="ec-suggestion">💡 建议：为所有图表补充数据标注、坐标轴说明、图例，确保图表信息可准确读取。</div>
+      </div>
+      <div class="eval-card">
+        <div class="ec-head">
+          <span class="ec-title">⚠️ 排版美观度</span>
+          <span class="ec-score">65分</span>
+        </div>
+        <div class="ec-desc">
+          <b>评估：</b>整体排版较为规范，但部分页面文字过多、留白不足，视觉层次不够清晰。<br>
+          <b>影响：</b>降低阅读体验，影响投资人专注度。
+        </div>
+        <div class="ec-suggestion">💡 建议：增加页面留白，使用标题层级、颜色区分、图标等元素提升视觉层次。</div>
+      </div>
+      <div class="eval-card">
+        <div class="ec-head">
+          <span class="ec-title">✅ 品牌一致性</span>
+          <span class="ec-score">82分</span>
+        </div>
+        <div class="ec-desc">
+          <b>评估：</b>BP整体风格统一，品牌色、字体、图标使用一致。<br>
+          <b>亮点：</b>封面设计专业，品牌形象清晰。
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 说服力 ===== -->
+    <div class="eval-content" id="eval-persuasion">
+      <div class="eval-card">
+        <div class="ec-head">
+          <span class="ec-title">✅ 核心卖点突出</span>
+          <span class="ec-score">88分</span>
+        </div>
+        <div class="ec-desc">
+          <b>评估：</b>核心卖点（差异化定位、临床数据优势）在多个章节反复强调，投资人印象深刻。<br>
+          <b>亮点：</b>开篇即点明核心卖点，结尾再次呼应。
+        </div>
+      </div>
+      <div class="eval-card">
+        <div class="ec-head">
+          <span class="ec-title">✅ 数据支撑充分</span>
+          <span class="ec-score">82分</span>
+        </div>
+        <div class="ec-desc">
+          <b>评估：</b>临床数据、市场数据、财务数据均有支撑，数据来源标注清晰。<br>
+          <b>亮点：</b>临床数据引用权威期刊，市场数据引用行业报告。
+        </div>
+      </div>
+      <div class="eval-card">
+        <div class="ec-head">
+          <span class="ec-title">⚠️ 投资人视角</span>
+          <span class="ec-score">70分</span>
+        </div>
+        <div class="ec-desc">
+          <b>评估：</b>BP更多从企业视角出发，缺乏投资人视角（投资回报、退出路径、风险收益比）。<br>
+          <b>影响：</b>投资人难以快速评估投资价值。
+        </div>
+        <div class="ec-suggestion">💡 建议：增加投资人视角内容，如投资回报测算、退出路径分析、风险收益比说明。</div>
+      </div>
+      <div class="eval-card">
+        <div class="ec-head">
+          <span class="ec-title">✅ 差异化定位</span>
+          <span class="ec-score">85分</span>
+        </div>
+        <div class="ec-desc">
+          <b>评估：</b>差异化定位清晰，与竞品对比充分，投资人可快速理解项目独特价值。<br>
+          <b>亮点：</b>竞品对比表格清晰展示差异化优势。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 评估报告 ===== -->
+  <div class="card">
+    <h2><span class="num">5</span>评估报告 <span class="sub">Assessment Report</span></h2>
+    <div style="overflow-x:auto;">
+      <table class="data-table">
+        <tr>
+          <th>报告项</th><th>内容</th>
+        </tr>
+        <tr>
+          <td><b>评估时间</b></td>
+          <td>2026-08-23 17:40:00</td>
+        </tr>
+        <tr>
+          <td><b>文档类型</b></td>
+          <td>PDF · 32页 · 8.5MB</td>
+        </tr>
+        <tr>
+          <td><b>评估维度</b></td>
+          <td>4维度 · 16项指标</td>
+        </tr>
+        <tr>
+          <td><b>叙事评分</b></td>
+          <td><span class="tag warn">76分（良好）</span></td>
+        </tr>
+        <tr>
+          <td><b>关键问题</b></td>
+          <td>章节过渡不自然、术语可读性差、图表不清晰、缺乏投资人视角</td>
+        </tr>
+        <tr>
+          <td><b>改进建议</b></td>
+          <td>增加过渡段落、补充术语解释、优化图表标注、增加投资人视角</td>
+        </tr>
+        <tr>
+          <td><b>预计改进后评分</b></td>
+          <td><span class="tag good">90分（优秀）</span></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 操作按钮 -->
+  <div class="action-bar">
+    <button class="action-btn primary" onclick="nextModule()">下一步：A4 数据一致性校验 →</button>
+    <button class="action-btn secondary" onclick="resetAll()">🔄 重置视图</button>
+  </div>
+
+</div>
+
+<div class="footer">
+  BioFin智投引擎 · 细化模块 #10：A3 叙事流畅度评估 — 交互式Demo<br>
+  本页面为演示用途，所有数据均为模拟数据
+</div>
+
+<script>
+// ============ 评估内容切换 ============
+function switchEval(el, evalId) {
+  document.querySelectorAll('.eval-nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.eval-content').forEach(c => c.classList.remove('active'));
+  document.getElementById(evalId).classList.add('active');
+}
+
+// ============ 下一步 ============
+function nextModule() {
+  alert('模块11：A4 数据一致性校验（开发中）\n\n将校验BP中数据的内部一致性，如临床数据、财务数据、市场数据等。');
+}
+
+// ============ 重置 ============
+function resetAll() {
+  document.querySelectorAll('.eval-nav-item').forEach((n, i) => {
+    n.classList.toggle('active', i === 0);
+  });
+  document.querySelectorAll('.eval-content').forEach((c, i) => {
+    c.classList.toggle('active', i === 0);
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

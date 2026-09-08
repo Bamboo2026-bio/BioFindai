@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BioFin智投引擎 · 模块5：估值参数库搭建</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; background:#0f2027; color:#e0e0e0; min-height:100vh; }
+
+/* ===== 顶部导航 ===== */
+.navbar { background:rgba(0,0,0,.5); border-bottom:1px solid rgba(255,255,255,.08); padding:14px 30px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; backdrop-filter:blur(10px); }
+.navbar .logo { font-size:20px; font-weight:800; color:#ffd700; }
+.navbar .logo span { color:#00ff88; }
+.navbar .nav-right { display:flex; gap:16px; align-items:center; }
+.navbar .nav-link { color:#9ca3af; font-size:13px; cursor:pointer; padding:6px 14px; border-radius:6px; transition:all .2s; }
+.navbar .nav-link:hover { color:#fff; background:rgba(255,255,255,.08); }
+.navbar .nav-link.active { color:#ffd700; background:rgba(255,215,0,.1); }
+.navbar .module-badge { background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; font-size:11px; font-weight:800; padding:4px 12px; border-radius:20px; letter-spacing:1px; }
+
+/* ===== 主容器 ===== */
+.container { max-width:1200px; margin:0 auto; padding:24px 24px 60px; }
+
+/* ===== 模块头部 ===== */
+.module-header { background:linear-gradient(135deg,#0f2027,#203a43,#2c5364); border-radius:16px; padding:32px 36px; margin-bottom:24px; position:relative; overflow:hidden; }
+.module-header::after { content:""; position:absolute; right:-40px; top:-40px; width:180px; height:180px; border-radius:50%; background:rgba(255,215,0,.06); }
+.module-header .mh-tag { display:inline-block; background:rgba(255,215,0,.15); color:#ffd700; border:1px solid rgba(255,215,0,.4); padding:3px 12px; border-radius:20px; font-size:12px; margin-bottom:12px; letter-spacing:1px; }
+.module-header h1 { font-size:26px; font-weight:800; color:#fff; margin-bottom:8px; }
+.module-header h1 span { color:#ffd700; }
+.module-header p { color:#cbd5e1; font-size:14px; max-width:700px; }
+.module-header .mh-meta { display:flex; gap:20px; margin-top:16px; flex-wrap:wrap; font-size:12px; color:#94a3b8; }
+.module-header .mh-meta b { color:#fff; }
+
+/* ===== 卡片 ===== */
+.card { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:24px 28px; margin-bottom:24px; }
+.card h2 { font-size:18px; font-weight:700; color:#fff; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+.card h2 .num { background:#ffd700; color:#0f2027; width:28px; height:28px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.card h2 .sub { font-size:12px; color:#6b7280; font-weight:400; }
+.card .desc { color:#9ca3af; font-size:13.5px; margin-bottom:16px; line-height:1.7; }
+.card .desc b { color:#e0e0e0; }
+
+/* ===== 参数库统计 ===== */
+.param-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:20px; }
+.param-stat { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:16px; text-align:center; }
+.param-stat .ps-value { font-size:28px; font-weight:800; color:#ffd700; }
+.param-stat .ps-value span { font-size:14px; color:#6b7280; font-weight:400; }
+.param-stat .ps-label { font-size:12px; color:#9ca3af; margin-top:4px; }
+
+/* ===== 参数库分类导航 ===== */
+.param-nav { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:24px; }
+.param-nav-item { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:16px; cursor:pointer; transition:all .3s; text-align:center; }
+.param-nav-item:hover { border-color:#ffd700; transform:translateY(-2px); background:rgba(255,215,0,.05); }
+.param-nav-item.active { border-color:#ffd700; background:rgba(255,215,0,.08); }
+.param-nav-item .pni-icon { font-size:28px; margin-bottom:8px; }
+.param-nav-item .pni-name { font-size:14px; font-weight:700; color:#fff; }
+.param-nav-item .pni-count { font-size:11px; color:#6b7280; margin-top:4px; }
+
+/* ===== 参数库内容 ===== */
+.param-content { display:none; }
+.param-content.active { display:block; animation:fadeIn .3s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+/* 参数卡片 */
+.param-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; }
+.param-card { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:16px; transition:all .2s; }
+.param-card:hover { border-color:rgba(255,215,0,.3); }
+.param-card .pc-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.param-card .pc-title { font-size:14px; font-weight:700; color:#fff; }
+.param-card .pc-tag { font-size:11px; padding:2px 8px; border-radius:8px; font-weight:600; }
+.param-card .pc-tag.core { background:rgba(255,215,0,.12); color:#ffd700; }
+.param-card .pc-tag.standard { background:rgba(74,168,255,.12); color:#4aa8ff; }
+.param-card .pc-tag.advanced { background:rgba(255,140,0,.12); color:#ff8c00; }
+.param-card .pc-field { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid rgba(255,255,255,.05); font-size:12.5px; }
+.param-card .pc-field:last-child { border-bottom:none; }
+.param-card .pc-field .pf-label { color:#9ca3af; }
+.param-card .pc-field .pf-value { color:#e0e0e0; font-weight:600; text-align:right; }
+.param-card .pc-field .pf-value b { color:#ffd700; }
+.param-card .pc-desc { font-size:12px; color:#9ca3af; line-height:1.6; margin-top:8px; }
+
+/* 表格 */
+.data-table { width:100%; border-collapse:collapse; font-size:13px; }
+.data-table th { background:rgba(255,255,255,.06); color:#e0e0e0; padding:10px 12px; text-align:left; font-weight:600; white-space:nowrap; }
+.data-table td { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.06); color:#9ca3af; }
+.data-table td b { color:#fff; }
+.data-table tr:hover td { background:rgba(255,255,255,.03); }
+.data-table .tag { font-size:11px; padding:2px 8px; border-radius:8px; font-weight:600; }
+.data-table .tag.good { background:rgba(0,255,136,.12); color:#00ff88; }
+.data-table .tag.warn { background:rgba(255,215,0,.12); color:#ffd700; }
+.data-table .tag.bad { background:rgba(255,68,68,.12); color:#ff4444; }
+
+/* 搜索框 */
+.search-box { display:flex; gap:10px; margin-bottom:16px; }
+.search-box input { flex:1; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:10px 16px; color:#fff; font-size:14px; outline:none; }
+.search-box input:focus { border-color:#ffd700; }
+.search-box input::placeholder { color:#6b7280; }
+.search-box .search-btn { background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; border:none; border-radius:8px; padding:10px 24px; font-weight:700; cursor:pointer; font-size:14px; }
+
+/* 操作按钮 */
+.action-bar { display:flex; gap:14px; justify-content:center; margin-top:24px; flex-wrap:wrap; }
+.action-btn { padding:12px 28px; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; border:none; transition:all .2s; }
+.action-btn.primary { background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; }
+.action-btn.primary:hover { transform:translateY(-2px); box-shadow:0 4px 20px rgba(255,215,0,.3); }
+.action-btn.secondary { background:rgba(255,255,255,.08); color:#e0e0e0; border:1px solid rgba(255,255,255,.15); }
+.action-btn.secondary:hover { background:rgba(255,255,255,.15); }
+
+/* 页脚 */
+.footer { text-align:center; padding:20px; color:#555; font-size:12px; border-top:1px solid rgba(255,255,255,.06); margin-top:40px; }
+
+/* 响应式 */
+@media (max-width:768px) {
+  .navbar { padding:12px 16px; }
+  .navbar .logo { font-size:16px; }
+  .module-header { padding:24px 20px; }
+  .module-header h1 { font-size:20px; }
+  .card { padding:18px; }
+  .param-stats { grid-template-columns:repeat(2,1fr); }
+  .param-nav { grid-template-columns:repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 顶部导航 ===== -->
+<div class="navbar">
+  <div class="logo">🧬 BioFin<span>智投引擎</span></div>
+  <div class="nav-right">
+    <span class="nav-link">模块1 · 文档解析</span>
+    <span class="nav-link">模块2 · 信息抽取</span>
+    <span class="nav-link">模块3 · 知识库</span>
+    <span class="nav-link">模块4 · 18A案例库</span>
+    <span class="nav-link active">模块5 · 估值参数库</span>
+    <span class="module-badge">P1 核心 · 数据层</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ===== 模块头部 ===== -->
+  <div class="module-header">
+    <div class="mh-tag">细化模块 #5 ｜ P1 核心 ｜ 数据层</div>
+    <h1>估值参数库搭建 <span>Valuation Parameter Library</span></h1>
+    <p>收集rNPV估值模型、行业通用估值参数入库，覆盖临床成功率、折现率、市场渗透率、峰值销售、可比估值等核心参数，为AI估值引擎提供专业依据。</p>
+    <div class="mh-meta">
+      <span>优先级：<b>P1 核心</b></span>
+      <span>前置依赖：<b>无</b></span>
+      <span>开发周期：<b>第2-4周</b></span>
+      <span>验收标准：<b>覆盖创新药/器械/CXO全赛道</b></span>
+    </div>
+  </div>
+
+  <!-- ===== 参数库统计 ===== -->
+  <div class="card">
+    <h2><span class="num">1</span>参数库总览 <span class="sub">Parameter Library Overview</span></h2>
+    <div class="param-stats">
+      <div class="param-stat"><div class="ps-value">12<span>类</span></div><div class="ps-label">rNPV模型参数</div></div>
+      <div class="param-stat"><div class="ps-value">18<span>项</span></div><div class="ps-label">临床成功率参数</div></div>
+      <div class="param-stat"><div class="ps-value">8<span>项</span></div><div class="ps-label">折现率参数</div></div>
+      <div class="param-stat"><div class="ps-value">15<span>项</span></div><div class="ps-label">市场渗透率参数</div></div>
+      <div class="param-stat"><div class="ps-value">20<span>项</span></div><div class="ps-label">峰值销售参数</div></div>
+      <div class="param-stat"><div class="ps-value">10<span>项</span></div><div class="ps-label">可比估值参数</div></div>
+    </div>
+  </div>
+
+  <!-- ===== 参数库分类导航 ===== -->
+  <div class="card">
+    <h2><span class="num">2</span>参数库分类 <span class="sub">Parameter Categories</span></h2>
+
+    <div class="param-nav">
+      <div class="param-nav-item active" onclick="switchParam(this,'param-rnpv')">
+        <div class="pni-icon">🧮</div>
+        <div class="pni-name">rNPV模型参数</div>
+        <div class="pni-count">12类参数</div>
+      </div>
+      <div class="param-nav-item" onclick="switchParam(this,'param-success')">
+        <div class="pni-icon">📈</div>
+        <div class="pni-name">临床成功率</div>
+        <div class="pni-count">18项参数</div>
+      </div>
+      <div class="param-nav-item" onclick="switchParam(this,'param-discount')">
+        <div class="pni-icon">💹</div>
+        <div class="pni-name">折现率参数</div>
+        <div class="pni-count">8项参数</div>
+      </div>
+      <div class="param-nav-item" onclick="switchParam(this,'param-penetration')">
+        <div class="pni-icon">🎯</div>
+        <div class="pni-name">市场渗透率</div>
+        <div class="pni-count">15项参数</div>
+      </div>
+      <div class="param-nav-item" onclick="switchParam(this,'param-peak')">
+        <div class="pni-icon">🏔️</div>
+        <div class="pni-name">峰值销售参数</div>
+        <div class="pni-count">20项参数</div>
+      </div>
+      <div class="param-nav-item" onclick="switchParam(this,'param-comparable')">
+        <div class="pni-icon">⚖️</div>
+        <div class="pni-name">可比估值参数</div>
+        <div class="pni-count">10项参数</div>
+      </div>
+    </div>
+
+    <!-- 搜索框 -->
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="搜索参数库，如：临床II期成功率、折现率、峰值销售、PS倍数..." onkeydown="if(event.key==='Enter')searchParam()">
+      <button class="search-btn" onclick="searchParam()">🔍 搜索</button>
+    </div>
+
+    <!-- ===== rNPV模型参数 ===== -->
+    <div class="param-content active" id="param-rnpv">
+      <div class="param-grid">
+        <div class="param-card">
+          <div class="pc-head">
+            <span class="pc-title">rNPV模型公式</span>
+            <span class="pc-tag core">核心参数</span>
+          </div>
+          <div class="pc-field"><span class="pf-label">模型公式</span><span class="pf-value">rNPV = Σ(CFt × Pt) / (1+r)^t</span></div>
+          <div class="pc-field"><span class="pf-label">CFt</span><span class="pf-value">第t年现金流</span></div>
+          <div class="pc-field"><span class="pf-label">Pt</span><span class="pf-value">第t年累计成功率</span></div>
+          <div class="pc-field"><span class="pf-label">r</span><span class="pf-value">折现率</span></div>
+          <div class="pc-field"><span class="pf-label">t</span><span class="pf-value">时间周期（年）</span></div>
+          <div class="pc-desc">rNPV（风险调整净现值）是生物医药行业最核心的估值模型，将临床风险纳入现金流折现。</div>
+        </div>
+        <div class="param-card">
+          <div class="pc-head">
+            <span class="pc-title">rNPV模型输入</span>
+            <span class="pc-tag core">核心参数</span>
+          </div>
+          <div class="pc-field"><span class="pf-label">峰值销售</span><span class="pf-value">药物上市后峰值年销售</span></div>
+          <div class="pc-field"><span class="pf-label">上市时间</span><span class="pf-value">预计获批上市年份</span></div>
+          <div class="pc-field"><span class="pf-label">专利期</span><span class="pf-value">专利保护期（通常10-12年）</span></div>
+          <div class="pc-field"><span class="pf-label">研发成本</span><span class="pf-value">各阶段研发投入</span></div>
+          <div class="pc-field"><span class="pf-label">成功率</span><span class="pf-value">各阶段临床成功率</span></div>
+          <div class="pc-desc">rNPV模型需要输入峰值销售、上市时间、专利期、研发成本、成功率等关键参数。</div>
+        </div>
+        <div class="param-card">
+          <div class="pc-head">
+            <span class="pc-title">rNPV模型输出</span>
+            <span class="pc-tag core">核心参数</span>
+          </div>
+          <div class="pc-field"><span class="pf-label">管线价值</span><span class="pf-value">单管线rNPV</span></div>
+          <div class="pc-field"><span class="pf-label">企业价值</span><span class="pf-value">Σ各管线rNPV</span></div>
+          <div class="pc-field"><span class="pf-label">敏感性分析</span><span class="pf-value">关键参数变动影响</span></div>
+          <div class="pc-field"><span class="pf-label">情景分析</span><span class="pf-value">乐观/基准/悲观</span></div>
+          <div class="pc-desc">rNPV模型输出管线价值、企业价值，并支持敏感性分析与情景分析。</div>
+        </div>
+        <div class="param-card">
+          <div class="pc-head">
+            <span class="pc-title">rNPV模型适用场景</span>
+            <span class="pc-tag standard">标准参数</span>
+          </div>
+          <div class="pc-field"><span class="pf-label">适用</span><span class="pf-value">创新药/生物药</span></div>
+          <div class="pc-field"><span class="pf-label">不适用</span><span class="pf-value">CXO/器械（用PE/PS）</span></div>
+          <div class="pc-field"><span class="pf-label">适用阶段</span><span class="pf-value">临床I期至上市</span></div>
+          <div class="pc-field"><span class="pf-label">数据要求</span><span class="pf-value">管线数据完整</span></div>
+          <div class="pc-desc">rNPV模型主要适用于创新药企业估值，CXO和器械企业通常使用PE/PS等可比估值法。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 临床成功率 ===== -->
+    <div class="param-content" id="param-success">
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <tr>
+            <th>阶段</th><th>肿瘤领域</th><th>代谢领域</th><th>神经领域</th><th>感染领域</th><th>整体平均</th>
+          </tr>
+          <tr>
+            <td><b>临床I期 → II期</b></td>
+            <td>65%</td>
+            <td>75%</td>
+            <td>60%</td>
+            <td>70%</td>
+            <td><span class="tag good">约70%</span></td>
+          </tr>
+          <tr>
+            <td><b>临床II期 → III期</b></td>
+            <td>35%</td>
+            <td>55%</td>
+            <td>30%</td>
+            <td>50%</td>
+            <td><span class="tag warn">约50%</span></td>
+          </tr>
+          <tr>
+            <td><b>临床III期 → NDA</b></td>
+            <td>45%</td>
+            <td>60%</td>
+            <td>40%</td>
+            <td>55%</td>
+            <td><span class="tag warn">约55%</span></td>
+          </tr>
+          <tr>
+            <td><b>NDA → 获批</b></td>
+            <td>85%</td>
+            <td>90%</td>
+            <td>80%</td>
+            <td>88%</td>
+            <td><span class="tag good">约85%</span></td>
+          </tr>
+          <tr>
+            <td><b>累计成功率</b></td>
+            <td>8.7%</td>
+            <td>22.3%</td>
+            <td>5.8%</td>
+            <td>16.9%</td>
+            <td><span class="tag bad">约13%</span></td>
+          </tr>
+        </table>
+      </div>
+      <div style="margin-top:12px; font-size:12px; color:#6b7280;">
+        <b style="color:#ffd700;">注：</b>临床成功率基于历史统计（PhRMA/BIO行业报告），不同适应症差异显著。肿瘤领域成功率最低，代谢领域相对较高。
+      </div>
+    </div>
+
+    <!-- ===== 折现率参数 ===== -->
+    <div class="param-content" id="param-discount">
+      <div class="param-grid">
+        <div class="param-card">
+          <div class="pc-head">
+            <span class="pc-title">折现率基准</span>
+            <span class="pc-tag core">核心参数</span>
+          </div>
+          <div class="pc-field"><span class="pf-label">无风险利率</span><span class="pf-value">2.5%</span></div>
+          <div class="pc-field"><span class="pf-label">市场风险溢价</span><span class="pf-value">5.5%</span></div>
+          <div class="pc-field"><span class="pf-label">Beta系数</span><span class="pf-value">1.2-1.5</span></div>
+          <div class="pc-field"><span class="pf-label">WACC</span><span class="pf-value">10-15%</span></div>
+          <div class="pc-desc">生物医药行业WACC通常为10-15%，高于一般行业，反映较高的研发风险。</div>
+        </div>
+        <div class="param-card">
+          <div class="pc-head">
+            <span class="pc-title">分阶段折现率</span>
+            <span class="pc-tag core">核心参数</span>
+          </div>
+          <div class="pc-field"><span class="pf-label">临床前</span><span class="pf-value"><b>20-25%</b></span></div>
+          <div class="pc-field"><span class="pf-label">临床I期</span><span class="pf-value"><b>18-20%</b></span></div>
+          <div class="pc-field"><span class="pf-label">临床II期</span><span class="pf-value"><b>15-18%</b></span></div>
+          <div class="pc-field"><span class="pf-label">临床III期</span><span class="pf-value"><b>12-15%</b></span></div>
+          <div class="pc-field"><span class="pf-label">NDA/上市</span><span class="pf-value"><b>10-12%</b></span></div>
+          <div class="pc-desc">临床阶段越早，风险越高，折现率越高。上市后折现率接近WACC。</div>
+        </div>
+        <div class="param-card">
+          <div class="pc-head">
+            <span class="pc-title">赛道调整系数</span>
+            <span class="pc-tag standard">标准参数</span>
+          </div>
+          <div class="pc-field"><span class="pf-label">肿瘤</span><span class="pf-value">+2%</span></div>
+          <div class="pc-field"><span class="pf-label">代谢</span><span class="pf-value">+1%</span></div>
+          <div class="pc-field"><span class="pf-label">神经</span><span class="pf-value">+3%</span></div>
+          <div class="pc-field"><span class="pf-label">感染</span><span class="pf-value">+1%</span></div>
+          <div class="pc-field"><span class="pf-label">罕见病</span><span class="pf-value">+2%</span></div>
+          <div class="pc-desc">不同赛道风险不同，需在基准折现率上进行调整。</div>
+        </div>
+        <div class="param-card">
+          <div class="pc-head">
+            <span class="pc-title">公司规模调整</span>
+            <span class="pc-tag advanced">高级参数</span>
+          </div>
+          <div class="pc-field"><span class="pf-label">大型药企</span><span class="pf-value">-1%</span></div>
+          <div class="pc-field"><span class="pf-label">中型药企</span><span class="pf-value">0%</span></div>
+          <div class="pc-field"><span class="pf-label">小型Biotech</span><span class="pf-value">+1%</span></div>
+          <div class="pc-field"><span class="pf-label">初创公司</span><span class="pf-value">+2%</span></div>
+          <div class="pc-desc">公司规模越小，融资风险越高，折现率相应上调。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 市场渗透率 ===== -->
+    <div class="param-content" id="param-penetration">
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <tr>
+            <th>适应症</th><th>上市第1年</th><th>上市第3年</th><th>上市第5年</th><th>峰值渗透率</th><th>达到峰值时间</th>
+          </tr>
+          <tr>
+            <td><b>肿瘤（一线）</b></td>
+            <td>5%</td>
+            <td>15%</td>
+            <td>25%</td>
+            <td>30-40%</td>
+            <td>5-7年</td>
+          </tr>
+          <tr>
+            <td><b>肿瘤（后线）</b></td>
+            <td>10%</td>
+            <td>25%</td>
+            <td>35%</td>
+            <td>40-50%</td>
+            <td>3-5年</td>
+          </tr>
+          <tr>
+            <td><b>代谢（糖尿病）</b></td>
+            <td>3%</td>
+            <td>10%</td>
+            <td>18%</td>
+            <td>20-30%</td>
+            <td>5-8年</td>
+          </tr>
+          <tr>
+            <td><b>代谢（肥胖）</b></td>
+            <td>2%</td>
+            <td>8%</td>
+            <td>15%</td>
+            <td>20-25%</td>
+            <td>5-8年</td>
+          </tr>
+          <tr>
+            <td><b>自身免疫</b></td>
+            <td>5%</td>
+            <td>15%</td>
+            <td>25%</td>
+            <td>30-40%</td>
+            <td>5-7年</td>
+          </tr>
+          <tr>
+            <td><b>罕见病</b></td>
+            <td>15%</td>
+            <td>35%</td>
+            <td>50%</td>
+            <td>60-70%</td>
+            <td>3-5年</td>
+          </tr>
+          <tr>
+            <td><b>感染</b></td>
+            <td>8%</td>
+            <td>20%</td>
+            <td>30%</td>
+            <td>35-45%</td>
+            <td>4-6年</td>
+          </tr>
+          <tr>
+            <td><b>神经</b></td>
+            <td>3%</td>
+            <td>10%</td>
+            <td>18%</td>
+            <td>20-30%</td>
+            <td>5-8年</td>
+          </tr>
+        </table>
+      </div>
+      <div style="margin-top:12px; font-size:12px; color:#6b7280;">
+        <b style="color:#ffd700;">注：</b>市场渗透率受竞争格局、医保准入、医生接受度等多因素影响。罕见病渗透率最高，代谢/神经领域渗透较慢。
+      </div>
+    </div>
+
+    <!-- ===== 峰值销售参数 ===== -->
+    <div class="param-content" id="param-peak">
+      <div class="param-grid">
+        <div class="param-card">
+          <div class="pc-head">
+            <span class="pc-title">肿瘤领域峰值销售</span>
+            <span class="pc-tag core">核心参数</span>
+          </div>
+          <div class="pc-field"><span class="pf-label">大适应症（肺癌）</span><span class="pf-value"><b>50-100亿美元</b></span></div>
+          <div class="pc-field"><span class="pf-label">中适应症（胃癌）</span><span class="pf-value"><b>20-50亿美元</b></span></div>
+          <div class="pc-field"><span class="pf-label">小适应症（罕见肿瘤）</span><span class="pf-value"><b>5-20亿美元</b></span></div>
+          <div class="pc-field"><span class="pf-label">孤儿肿瘤</span><span class="pf-value"><b>2-10亿美元</b></span></div>
+          <div class="pc-desc">肿瘤领域峰值销售取决于适应症规模、竞争格局、定价能力。</div>
+        </div>
+        <div class="param-card">
+          <div class="pc-head">
+            <span class="pc-title">代谢领域峰值销售</span>
+            <span class="pc-tag core">核心参数</span>
+          </div>
+          <div class="pc-field"><span class="pf-label">GLP-1（糖尿病）</span><span class="pf-value"><b>50-150亿美元</b></span></div>
+          <div class="pc-field"><span class="pf-label">GLP-1（肥胖）</span><span class="pf-value"><b>100-300亿美元</b></span></div>
+          <div class="pc-field"><span class="pf-label">SGLT2</span><span class="pf-value"><b>30-80亿美元</b></span></div>
+          <div class="pc-field"><span class="pf-label">DPP-4</span><span class="pf-value"><b>10-30亿美元</b></span></div>
+          <div class="pc-desc">代谢领域患者基数大，GLP-1肥胖适应症峰值销售潜力巨大。</div>
+        </div>
+        <div class="param-card">
+          <div class="pc-head">
+            <span class="pc-title">自身免疫领域峰值销售</span>
+            <span class="pc-tag core">核心参数</span>
+          </div>
+          <div class="pc-field"><span class="pf-label">大适应症（类风湿）</span><span class="pf-value"><b>30-80亿美元</b></span></div>
+          <div class="pc-field"><span class="pf-label">中适应症（银屑病）</span><span class="pf-value"><b>20-50亿美元</b></span></div>
+          <div class="pc-field"><span class="pf-label">小适应症（罕见自免）</span><span class="pf-value"><b>5-20亿美元</b></span></div>
+          <div class="pc-desc">自身免疫领域患者基数大，生物制剂定价高，峰值销售潜力大。</div>
+        </div>
+        <div class="param-card">
+          <div class="pc-head">
+            <span class="pc-title">神经领域峰值销售</span>
+            <span class="pc-tag standard">标准参数</span>
+          </div>
+          <div class="pc-field"><span class="pf-label">阿尔茨海默</span><span class="pf-value"><b>50-100亿美元</b></span></div>
+          <div class="pc-field"><span class="pf-label">帕金森</span><span class="pf-value"><b>20-50亿美元</b></span></div>
+          <div class="pc-field"><span class="pf-label">罕见神经疾病</span><span class="pf-value"><b>5-20亿美元</b></span></div>
+          <div class="pc-desc">神经领域研发风险高，但成功药物峰值销售潜力巨大。</div>
+        </div>
+        <div class="param-card">
+          <div class="pc-head">
+            <span class="pc-title">罕见病领域峰值销售</span>
+            <span class="pc-tag standard">标准参数</span>
+          </div>
+          <div class="pc-field"><span class="pf-label">大罕见病</span><span class="pf-value"><b>20-50亿美元</b></span></div>
+          <div class="pc-field"><span class="pf-label">中罕见病</span><span class="pf-value"><b>10-20亿美元</b></span></div>
+          <div class="pc-field"><span class="pf-label">超罕见病</span><span class="pf-value"><b>2-10亿美元</b></span></div>
+          <div class="pc-desc">罕见病药物定价极高（孤儿药定价），单患者年费用可达数十万美元。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 可比估值参数 ===== -->
+    <div class="param-content" id="param-comparable">
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <tr>
+            <th>估值方法</th><th>适用企业</th><th>关键指标</th><th>行业参考区间</th><th>说明</th>
+          </tr>
+          <tr>
+            <td><b>PS倍数</b></td>
+            <td>已上市/有收入</td>
+            <td>市销率</td>
+            <td>8-15x</td>
+            <td>创新药企常用</td>
+          </tr>
+          <tr>
+            <td><b>PE倍数</b></td>
+            <td>已盈利企业</td>
+            <td>市盈率</td>
+            <td>20-40x</td>
+            <td>CXO/器械常用</td>
+          </tr>
+          <tr>
+            <td><b>EV/EBITDA</b></td>
+            <td>已盈利企业</td>
+            <td>企业价值/EBITDA</td>
+            <td>15-25x</td>
+            <td>CXO/器械常用</td>
+          </tr>
+          <tr>
+            <td><b>rNPV</b></td>
+            <td>未盈利创新药</td>
+            <td>管线价值</td>
+            <td>—</td>
+            <td>18A企业核心方法</td>
+          </tr>
+          <tr>
+            <td><b>管线价值法</b></td>
+            <td>早期Biotech</td>
+            <td>管线rNPV总和</td>
+            <td>—</td>
+            <td>临床前/早期企业</td>
+          </tr>
+          <tr>
+            <td><b>BD交易对标</b></td>
+            <td>有BD交易</td>
+            <td>首付款/里程碑</td>
+            <td>—</td>
+            <td>参考License交易</td>
+          </tr>
+        </table>
+      </div>
+      <div style="margin-top:12px; font-size:12px; color:#6b7280;">
+        <b style="color:#ffd700;">注：</b>可比估值参数用于BP诊断中的估值合理性判断，需结合企业阶段、赛道、管线成熟度综合选择估值方法。
+      </div>
+    </div>
+  </div>
+
+  <!-- 操作按钮 -->
+  <div class="action-bar">
+    <button class="action-btn primary" onclick="nextModule()">下一步：机构资源库搭建 →</button>
+    <button class="action-btn secondary" onclick="resetAll()">🔄 重置视图</button>
+  </div>
+
+</div>
+
+<div class="footer">
+  BioFin智投引擎 · 细化模块 #5：估值参数库搭建 — 交互式Demo<br>
+  本页面为演示用途，所有数据均为模拟数据
+</div>
+
+<script>
+// ============ 参数库分类切换 ============
+function switchParam(el, paramId) {
+  document.querySelectorAll('.param-nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.param-content').forEach(c => c.classList.remove('active'));
+  document.getElementById(paramId).classList.add('active');
+}
+
+// ============ 搜索 ============
+function searchParam() {
+  const query = document.getElementById('searchInput').value.trim();
+  if (!query) {
+    alert('请输入搜索关键词');
+    return;
+  }
+  alert('搜索功能演示：\n\n关键词：' + query + '\n\n在真实系统中，将基于向量化参数库进行语义检索，返回相关估值参数、模型公式等专业信息。');
+}
+
+// ============ 下一步 ============
+function nextModule() {
+  alert('模块6：机构资源库搭建（开发中）\n\n将搭建合作PE/VC机构投资偏好、投资赛道、过往项目清单等数据入库。');
+}
+
+// ============ 重置 ============
+function resetAll() {
+  document.querySelectorAll('.param-nav-item').forEach((n, i) => {
+    n.classList.toggle('active', i === 0);
+  });
+  document.querySelectorAll('.param-content').forEach((c, i) => {
+    c.classList.toggle('active', i === 0);
+  });
+  document.getElementById('searchInput').value = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BioFin智投引擎 · BP全自动诊断打分系统 — 交互式Demo</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; background:#0f2027; color:#e0e0e0; min-height:100vh; }
+
+/* ===== 顶部导航 ===== */
+.navbar { background:rgba(0,0,0,.5); border-bottom:1px solid rgba(255,255,255,.08); padding:14px 30px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; backdrop-filter:blur(10px); }
+.navbar .logo { font-size:20px; font-weight:800; color:#ffd700; }
+.navbar .logo span { color:#00ff88; }
+.navbar .nav-right { display:flex; gap:16px; align-items:center; }
+.navbar .nav-link { color:#9ca3af; font-size:13px; cursor:pointer; padding:6px 14px; border-radius:6px; transition:all .2s; }
+.navbar .nav-link:hover { color:#fff; background:rgba(255,255,255,.08); }
+.navbar .nav-link.active { color:#ffd700; background:rgba(255,215,0,.1); }
+.navbar .demo-badge { background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; font-size:11px; font-weight:800; padding:4px 12px; border-radius:20px; letter-spacing:1px; }
+
+/* ===== 主容器 ===== */
+.container { max-width:1200px; margin:0 auto; padding:24px 24px 60px; }
+
+/* ===== 步骤指示器 ===== */
+.steps { display:flex; justify-content:center; gap:0; margin:30px 0 40px; }
+.step { display:flex; align-items:center; gap:10px; }
+.step .dot { width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,.08); border:2px solid rgba(255,255,255,.2); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:#9ca3af; transition:all .3s; }
+.step .label { font-size:13px; color:#6b7280; transition:all .3s; }
+.step.active .dot { background:#ffd700; border-color:#ffd700; color:#0f2027; }
+.step.active .label { color:#ffd700; font-weight:600; }
+.step.done .dot { background:#00ff88; border-color:#00ff88; color:#0f2027; }
+.step.done .label { color:#00ff88; }
+.step-line { width:60px; height:2px; background:rgba(255,255,255,.15); margin:0 10px; }
+.step-line.done { background:#00ff88; }
+
+/* ===== 页面切换 ===== */
+.page { display:none; }
+.page.active { display:block; animation:fadeIn .4s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+/* ===== 上传页面 ===== */
+.upload-card { background:rgba(255,255,255,.05); border:2px dashed rgba(255,255,255,.2); border-radius:16px; padding:60px 40px; text-align:center; cursor:pointer; transition:all .3s; }
+.upload-card:hover { border-color:#ffd700; background:rgba(255,215,0,.05); }
+.upload-card.dragging { border-color:#00ff88; background:rgba(0,255,136,.05); }
+.upload-card .icon { font-size:56px; margin-bottom:16px; }
+.upload-card h3 { font-size:20px; color:#fff; margin-bottom:8px; }
+.upload-card p { color:#9ca3af; font-size:14px; margin-bottom:20px; }
+.upload-card .btn { display:inline-block; background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; padding:12px 32px; border-radius:8px; font-weight:700; font-size:15px; border:none; cursor:pointer; transition:transform .2s; }
+.upload-card .btn:hover { transform:translateY(-2px); }
+.upload-card .formats { font-size:12px; color:#6b7280; margin-top:16px; }
+
+/* 示例BP选择 */
+.demo-select { margin-top:30px; }
+.demo-select h4 { color:#9ca3af; font-size:14px; margin-bottom:14px; text-align:center; }
+.demo-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; }
+.demo-card { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:20px; cursor:pointer; transition:all .3s; }
+.demo-card:hover { transform:translateY(-4px); border-color:#ffd700; background:rgba(255,215,0,.06); }
+.demo-card .dc-icon { font-size:32px; margin-bottom:10px; }
+.demo-card .dc-title { font-size:16px; font-weight:700; color:#fff; margin-bottom:6px; }
+.demo-card .dc-desc { font-size:13px; color:#9ca3af; line-height:1.6; }
+.demo-card .dc-tags { margin-top:10px; display:flex; gap:6px; flex-wrap:wrap; }
+.demo-card .dc-tag { font-size:11px; padding:2px 10px; border-radius:12px; background:rgba(255,255,255,.08); color:#9ca3af; }
+
+/* ===== 分析中页面 ===== */
+.analyzing { text-align:center; padding:60px 20px; }
+.analyzing .ai-icon { font-size:64px; margin-bottom:20px; animation:pulse 1.5s infinite; }
+@keyframes pulse { 0%,100% { transform:scale(1); opacity:1; } 50% { transform:scale(1.1); opacity:.7; } }
+.analyzing h2 { color:#fff; font-size:24px; margin-bottom:10px; }
+.analyzing p { color:#9ca3af; font-size:14px; margin-bottom:30px; }
+.analyzing .progress-ring { width:120px; height:120px; margin:0 auto 30px; position:relative; }
+.analyzing .progress-ring svg { transform:rotate(-90deg); }
+.analyzing .progress-ring .ring-bg { stroke:rgba(255,255,255,.1); }
+.analyzing .progress-ring .ring-fg { stroke:#ffd700; stroke-linecap:round; transition:stroke-dashoffset .3s; }
+.analyzing .progress-ring .ring-text { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:24px; font-weight:800; color:#ffd700; }
+.analyzing .analysis-steps { max-width:500px; margin:0 auto; text-align:left; }
+.analyzing .analysis-step { display:flex; align-items:center; gap:12px; padding:10px 16px; border-radius:8px; margin-bottom:8px; background:rgba(255,255,255,.04); opacity:.4; transition:all .3s; }
+.analyzing .analysis-step.active { opacity:1; background:rgba(255,215,0,.08); border-left:3px solid #ffd700; }
+.analyzing .analysis-step.done { opacity:.8; }
+.analyzing .analysis-step .as-icon { font-size:18px; }
+.analyzing .analysis-step .as-text { font-size:14px; color:#e0e0e0; }
+.analyzing .analysis-step .as-status { margin-left:auto; font-size:12px; color:#00ff88; }
+
+/* ===== 结果页面 ===== */
+.result-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; flex-wrap:wrap; gap:16px; }
+.result-header .rh-left h2 { color:#fff; font-size:24px; margin-bottom:6px; }
+.result-header .rh-left p { color:#9ca3af; font-size:14px; }
+.result-header .rh-right { text-align:center; }
+.result-header .score-big { font-size:56px; font-weight:800; color:#ffd700; line-height:1; }
+.result-header .score-big span { font-size:20px; color:#9ca3af; }
+.result-header .grade { display:inline-block; padding:4px 16px; border-radius:20px; font-size:14px; font-weight:700; margin-top:6px; }
+.grade-a { background:rgba(0,255,136,.15); color:#00ff88; border:1px solid rgba(0,255,136,.3); }
+.grade-b { background:rgba(255,215,0,.15); color:#ffd700; border:1px solid rgba(255,215,0,.3); }
+.grade-c { background:rgba(255,140,0,.15); color:#ff8c00; border:1px solid rgba(255,140,0,.3); }
+.grade-d { background:rgba(255,68,68,.15); color:#ff4444; border:1px solid rgba(255,68,68,.3); }
+
+/* 评分卡片网格 */
+.score-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; margin-bottom:24px; }
+.score-card { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:20px; transition:all .3s; cursor:pointer; }
+.score-card:hover { border-color:#ffd700; transform:translateY(-2px); }
+.score-card .sc-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.score-card .sc-icon { font-size:24px; }
+.score-card .sc-name { font-size:14px; font-weight:600; color:#e0e0e0; }
+.score-card .sc-score { font-size:32px; font-weight:800; }
+.score-card .sc-score span { font-size:14px; color:#6b7280; font-weight:400; }
+.score-card .sc-bar { height:6px; background:rgba(255,255,255,.1); border-radius:3px; overflow:hidden; margin-bottom:10px; }
+.score-card .sc-bar-fill { height:100%; border-radius:3px; transition:width 1s ease; }
+.score-card .sc-desc { font-size:12px; color:#9ca3af; line-height:1.5; }
+.score-card .sc-status { font-size:12px; margin-top:8px; font-weight:600; }
+.status-good { color:#00ff88; }
+.status-warn { color:#ffd700; }
+.status-bad { color:#ff4444; }
+
+/* 雷达图 */
+.radar-wrap { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px; }
+.radar-box { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:20px; }
+.radar-box h3 { color:#fff; font-size:16px; margin-bottom:16px; }
+.radar-box canvas { width:100%; max-height:300px; }
+
+/* 风险高亮 */
+.risk-section { margin-bottom:24px; }
+.risk-section h3 { color:#fff; font-size:18px; margin-bottom:16px; }
+.risk-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:14px; }
+.risk-item { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:16px; border-left:4px solid; }
+.risk-item.high { border-left-color:#ff4444; }
+.risk-item.mid { border-left-color:#ffd700; }
+.risk-item.low { border-left-color:#00ff88; }
+.risk-item .ri-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.risk-item .ri-title { font-size:14px; font-weight:700; color:#fff; }
+.risk-item .ri-level { font-size:11px; padding:2px 10px; border-radius:10px; font-weight:700; }
+.risk-item .ri-level.high { background:rgba(255,68,68,.15); color:#ff4444; }
+.risk-item .ri-level.mid { background:rgba(255,215,0,.15); color:#ffd700; }
+.risk-item .ri-level.low { background:rgba(0,255,136,.15); color:#00ff88; }
+.risk-item .ri-desc { font-size:13px; color:#9ca3af; line-height:1.6; }
+.risk-item .ri-loc { font-size:12px; color:#6b7280; margin-top:8px; }
+.risk-item .ri-loc b { color:#ffd700; }
+
+/* 详细报告 */
+.report-section { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:24px; margin-bottom:24px; }
+.report-section h3 { color:#ffd700; font-size:17px; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+.report-section h3 .rs-icon { font-size:20px; }
+.report-item { padding:14px 0; border-bottom:1px solid rgba(255,255,255,.06); }
+.report-item:last-child { border-bottom:none; }
+.report-item .ri-title { font-size:14px; font-weight:600; color:#fff; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+.report-item .ri-title .tag { font-size:11px; padding:2px 8px; border-radius:8px; font-weight:600; }
+.report-item .ri-title .tag.good { background:rgba(0,255,136,.12); color:#00ff88; }
+.report-item .ri-title .tag.warn { background:rgba(255,215,0,.12); color:#ffd700; }
+.report-item .ri-title .tag.bad { background:rgba(255,68,68,.12); color:#ff4444; }
+.report-item .ri-content { font-size:13px; color:#9ca3af; line-height:1.7; }
+.report-item .ri-content b { color:#e0e0e0; }
+.report-item .ri-suggestion { font-size:13px; color:#00ff88; margin-top:6px; padding:8px 12px; background:rgba(0,255,136,.06); border-radius:6px; }
+
+/* 建议清单 */
+.suggestions { background:rgba(0,255,136,.04); border:1px solid rgba(0,255,136,.15); border-radius:12px; padding:24px; margin-bottom:24px; }
+.suggestions h3 { color:#00ff88; font-size:17px; margin-bottom:16px; }
+.suggestions .sug-item { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid rgba(0,255,136,.08); }
+.suggestions .sug-item:last-child { border-bottom:none; }
+.suggestions .sug-num { width:28px; height:28px; border-radius:50%; background:rgba(0,255,136,.15); color:#00ff88; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; flex-shrink:0; }
+.suggestions .sug-text { font-size:14px; color:#e0e0e0; line-height:1.6; }
+.suggestions .sug-text b { color:#00ff88; }
+
+/* 操作按钮 */
+.action-bar { display:flex; gap:14px; justify-content:center; margin-top:30px; flex-wrap:wrap; }
+.action-btn { padding:12px 28px; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; border:none; transition:all .2s; }
+.action-btn.primary { background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; }
+.action-btn.primary:hover { transform:translateY(-2px); box-shadow:0 4px 20px rgba(255,215,0,.3); }
+.action-btn.secondary { background:rgba(255,255,255,.08); color:#e0e0e0; border:1px solid rgba(255,255,255,.15); }
+.action-btn.secondary:hover { background:rgba(255,255,255,.15); }
+.action-btn.green { background:linear-gradient(135deg,#00ff88,#00cc66); color:#0f2027; }
+.action-btn.green:hover { transform:translateY(-2px); box-shadow:0 4px 20px rgba(0,255,136,.3); }
+
+/* 页脚 */
+.footer { text-align:center; padding:20px; color:#555; font-size:12px; border-top:1px solid rgba(255,255,255,.06); margin-top:40px; }
+
+/* 响应式 */
+@media (max-width:768px) {
+  .radar-wrap { grid-template-columns:1fr; }
+  .navbar { padding:12px 16px; }
+  .navbar .logo { font-size:16px; }
+  .steps { flex-wrap:wrap; gap:10px; }
+  .step-line { display:none; }
+  .upload-card { padding:40px 20px; }
+  .result-header { flex-direction:column; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 顶部导航 ===== -->
+<div class="navbar">
+  <div class="logo">🧬 BioFin<span>智投引擎</span></div>
+  <div class="nav-right">
+    <span class="nav-link active">BP诊断</span>
+    <span class="nav-link">融资方案</span>
+    <span class="nav-link">机构匹配</span>
+    <span class="nav-link">估值计算</span>
+    <span class="demo-badge">DEMO 演示版</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ===== 步骤指示器 ===== -->
+  <div class="steps" id="stepsBar">
+    <div class="step active" data-step="1">
+      <div class="dot">1</div>
+      <div class="label">上传BP</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step" data-step="2">
+      <div class="dot">2</div>
+      <div class="label">AI诊断</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step" data-step="3">
+      <div class="dot">3</div>
+      <div class="label">诊断报告</div>
+    </div>
+  </div>
+
+  <!-- ===== 页面1：上传BP ===== -->
+  <div class="page active" id="page-upload">
+    <div class="upload-card" id="uploadCard" onclick="handleUploadClick()">
+      <div class="icon">📄</div>
+      <h3>上传您的商业计划书（BP）</h3>
+      <p>支持 PDF / Word / PPT / 文字粘贴 / 线上问卷 多种方式</p>
+      <button class="btn" onclick="event.stopPropagation();handleUploadClick()">选择文件上传</button>
+      <div class="formats">支持格式：.pdf .docx .pptx .txt ｜ 文件大小 ≤ 50MB</div>
+    </div>
+
+    <div class="demo-select">
+      <h4>— 或选择示例BP进行演示 —</h4>
+      <div class="demo-cards">
+        <div class="demo-card" onclick="startDemo('demo1')">
+          <div class="dc-icon">🧬</div>
+          <div class="dc-title">示例A：创新药企 · 肿瘤免疫</div>
+          <div class="dc-desc">某创新药企BP，聚焦PD-1/PD-L1双抗管线，处于临床II期，拟融资2亿元。</div>
+          <div class="dc-tags">
+            <span class="dc-tag">肿瘤免疫</span>
+            <span class="dc-tag">临床II期</span>
+            <span class="dc-tag">融资2亿</span>
+          </div>
+        </div>
+        <div class="demo-card" onclick="startDemo('demo2')">
+          <div class="dc-icon">🦴</div>
+          <div class="dc-title">示例B：骨科器械 · 高值耗材</div>
+          <div class="dc-desc">某骨科医疗器械企业BP，主打3D打印植入物，已获NMPA注册证，拟融资1.5亿元。</div>
+          <div class="dc-tags">
+            <span class="dc-tag">骨科器械</span>
+            <span class="dc-tag">已获注册证</span>
+            <span class="dc-tag">融资1.5亿</span>
+          </div>
+        </div>
+        <div class="demo-card" onclick="startDemo('demo3')">
+          <div class="dc-icon">💊</div>
+          <div class="dc-title">示例C：CXO服务 · 临床CRO</div>
+          <div class="dc-desc">某临床CRO企业BP，提供一站式临床研究服务，拟融资8000万元用于产能扩张。</div>
+          <div class="dc-tags">
+            <span class="dc-tag">CXO服务</span>
+            <span class="dc-tag">临床CRO</span>
+            <span class="dc-tag">融资8000万</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 页面2：AI诊断中 ===== -->
+  <div class="page" id="page-analyzing">
+    <div class="analyzing">
+      <div class="ai-icon">🤖</div>
+      <h2>AI 正在深度诊断您的BP</h2>
+      <p id="analyzingFile">正在解析文件...</p>
+
+      <div class="progress-ring">
+        <svg width="120" height="120">
+          <circle class="ring-bg" cx="60" cy="60" r="52" fill="none" stroke-width="8"/>
+          <circle class="ring-fg" id="ringFg" cx="60" cy="60" r="52" fill="none" stroke-width="8" stroke-dasharray="326.7" stroke-dashoffset="326.7"/>
+        </svg>
+        <div class="ring-text" id="ringText">0%</div>
+      </div>
+
+      <div class="analysis-steps" id="analysisSteps">
+        <div class="analysis-step" data-step="1">
+          <span class="as-icon">📄</span>
+          <span class="as-text">文档解析与OCR识别</span>
+          <span class="as-status"></span>
+        </div>
+        <div class="analysis-step" data-step="2">
+          <span class="as-icon">🔍</span>
+          <span class="as-text">结构化信息抽取</span>
+          <span class="as-status"></span>
+        </div>
+        <div class="analysis-step" data-step="3">
+          <span class="as-icon">📋</span>
+          <span class="as-text">基础框架评估</span>
+          <span class="as-status"></span>
+        </div>
+        <div class="analysis-step" data-step="4">
+          <span class="as-icon">🧬</span>
+          <span class="as-text">管线深度诊断</span>
+          <span class="as-status"></span>
+        </div>
+        <div class="analysis-step" data-step="5">
+          <span class="as-icon">💰</span>
+          <span class="as-text">资本逻辑校验</span>
+          <span class="as-status"></span>
+        </div>
+        <div class="analysis-step" data-step="6">
+          <span class="as-icon">⚠️</span>
+          <span class="as-text">风险点智能高亮</span>
+          <span class="as-status"></span>
+        </div>
+        <div class="analysis-step" data-step="7">
+          <span class="as-icon">📊</span>
+          <span class="as-text">评分模型计算与报告生成</span>
+          <span class="as-status"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 页面3：诊断结果 ===== -->
+  <div class="page" id="page-result">
+    <!-- 结果头部 -->
+    <div class="result-header">
+      <div class="rh-left">
+        <h2 id="resultTitle">诊断报告</h2>
+        <p id="resultMeta">诊断时间：2026年8月19日 ｜ 诊断编号：BF-2026-0819-001</p>
+      </div>
+      <div class="rh-right">
+        <div class="score-big" id="totalScore">0<span>分</span></div>
+        <div class="grade grade-b" id="totalGrade">B级 · 良好</div>
+      </div>
+    </div>
+
+    <!-- 四维评分卡片 -->
+    <div class="score-grid">
+      <div class="score-card" onclick="scrollToSection('framework')">
+        <div class="sc-head">
+          <span class="sc-icon">📋</span>
+          <span class="sc-name">基础框架评估</span>
+        </div>
+        <div class="sc-score" id="scoreFramework">0<span>/25</span></div>
+        <div class="sc-bar"><div class="sc-bar-fill" id="barFramework" style="width:0%;background:#ffd700;"></div></div>
+        <div class="sc-desc" id="descFramework">结构完整性、逻辑闭环、叙事表达</div>
+        <div class="sc-status" id="statusFramework">—</div>
+      </div>
+      <div class="score-card" onclick="scrollToSection('pipeline')">
+        <div class="sc-head">
+          <span class="sc-icon">🧬</span>
+          <span class="sc-name">管线深度诊断</span>
+        </div>
+        <div class="sc-score" id="scorePipeline">0<span>/30</span></div>
+        <div class="sc-bar"><div class="sc-bar-fill" id="barPipeline" style="width:0%;background:#00ff88;"></div></div>
+        <div class="sc-desc" id="descPipeline">临床数据、技术差异化、专利壁垒</div>
+        <div class="sc-status" id="statusPipeline">—</div>
+      </div>
+      <div class="score-card" onclick="scrollToSection('capital')">
+        <div class="sc-head">
+          <span class="sc-icon">💰</span>
+          <span class="sc-name">资本逻辑校验</span>
+        </div>
+        <div class="sc-score" id="scoreCapital">0<span>/25</span></div>
+        <div class="sc-bar"><div class="sc-bar-fill" id="barCapital" style="width:0%;background:#4aa8ff;"></div></div>
+        <div class="sc-desc" id="descCapital">估值合理性、融资与稀释、资金使用</div>
+        <div class="sc-status" id="statusCapital">—</div>
+      </div>
+      <div class="score-card" onclick="scrollToSection('risk')">
+        <div class="sc-head">
+          <span class="sc-icon">⚠️</span>
+          <span class="sc-name">风险控制评估</span>
+        </div>
+        <div class="sc-score" id="scoreRisk">0<span>/20</span></div>
+        <div class="sc-bar"><div class="sc-bar-fill" id="barRisk" style="width:0%;background:#ff4444;"></div></div>
+        <div class="sc-desc" id="descRisk">合规风险、现金流压力、研发失败率</div>
+        <div class="sc-status" id="statusRisk">—</div>
+      </div>
+    </div>
+
+    <!-- 雷达图 -->
+    <div class="radar-wrap">
+      <div class="radar-box">
+        <h3>📊 四维评分雷达图</h3>
+        <canvas id="radarCanvas"></canvas>
+      </div>
+      <div class="radar-box">
+        <h3>📈 与行业基准对比</h3>
+        <canvas id="benchmarkCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- 风险高亮 -->
+    <div class="risk-section" id="risk">
+      <h3>🚨 风险点智能高亮</h3>
+      <div class="risk-list" id="riskList"></div>
+    </div>
+
+    <!-- 详细诊断报告 -->
+    <div class="report-section" id="framework">
+      <h3><span class="rs-icon">📋</span>基础框架评估 · 详细诊断</h3>
+      <div id="frameworkReport"></div>
+    </div>
+
+    <div class="report-section" id="pipeline">
+      <h3><span class="rs-icon">🧬</span>管线深度诊断 · 详细诊断</h3>
+      <div id="pipelineReport"></div>
+    </div>
+
+    <div class="report-section" id="capital">
+      <h3><span class="rs-icon">💰</span>资本逻辑校验 · 详细诊断</h3>
+      <div id="capitalReport"></div>
+    </div>
+
+    <!-- 改进建议 -->
+    <div class="suggestions">
+      <h3>💡 AI 智能改进建议</h3>
+      <div id="suggestionList"></div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="action-bar">
+      <button class="action-btn primary" onclick="showDownloadModal()">📥 下载完整诊断报告</button>
+      <button class="action-btn green" onclick="showValueAdd()">🚀 查看增值服务</button>
+      <button class="action-btn secondary" onclick="resetDemo()">🔄 重新诊断</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  BioFin智投引擎 · BP全自动诊断打分系统 — 交互式Demo演示版<br>
+  本页面为演示用途，所有数据均为模拟数据，不构成任何投资建议
+</div>
+
+<!-- 下载弹窗 -->
+<div id="downloadModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.8); z-index:1000; display:none; justify-content:center; align-items:center;">
+  <div style="background:#131c22; border-radius:12px; padding:30px; max-width:400px; width:90%; text-align:center; border:1px solid rgba(255,255,255,.1);">
+    <div style="font-size:48px; margin-bottom:16px;">📄</div>
+    <h3 style="color:#fff; margin-bottom:10px;">诊断报告已生成</h3>
+    <p style="color:#9ca3af; font-size:14px; margin-bottom:20px;">完整版诊断报告（PDF格式）包含：四维评分详情、风险高亮清单、改进建议、对标企业分析等。</p>
+    <div style="display:flex; gap:10px; justify-content:center;">
+      <button class="action-btn primary" onclick="closeModal()">确认</button>
+      <button class="action-btn secondary" onclick="closeModal()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 增值服务弹窗 -->
+<div id="valueAddModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.8); z-index:1000; justify-content:center; align-items:center;">
+  <div style="background:#131c22; border-radius:12px; padding:30px; max-width:500px; width:90%; border:1px solid rgba(255,255,255,.1);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+      <h3 style="color:#ffd700; font-size:18px;">🚀 增值服务推荐</h3>
+      <button style="background:none; border:none; color:#9ca3af; font-size:24px; cursor:pointer;" onclick="closeModal()">×</button>
+    </div>
+    <div style="display:grid; gap:12px;">
+      <div style="background:rgba(255,255,255,.05); border-radius:8px; padding:14px; border-left:3px solid #ffd700;">
+        <div style="font-size:14px; font-weight:700; color:#fff; margin-bottom:4px;">✍️ AI BP改写与多版本生成</div>
+        <div style="font-size:12px; color:#9ca3af;">生成VC/PE/18A Pre-IPO多版本BP，优化叙事逻辑与数据呈现</div>
+      </div>
+      <div style="background:rgba(255,255,255,.05); border-radius:8px; padding:14px; border-left:3px solid #00ff88;">
+        <div style="font-size:14px; font-weight:700; color:#fff; margin-bottom:4px;">💼 智能融资方案设计</div>
+        <div style="font-size:12px; color:#9ca3af;">分临床阶段匹配多元融资工具，自动测算估值与稀释比例</div>
+      </div>
+      <div style="background:rgba(255,255,255,.05); border-radius:8px; padding:14px; border-left:3px solid #4aa8ff;">
+        <div style="font-size:14px; font-weight:700; color:#fff; margin-bottom:4px;">🏢 机构匹配与路演支持</div>
+        <div style="font-size:12px; color:#9ca3af;">智能匹配PE/VC机构偏好，生成路演问答库与路演稿件</div>
+      </div>
+      <div style="background:rgba(255,255,255,.05); border-radius:8px; padding:14px; border-left:3px solid #ff8c00;">
+        <div style="font-size:14px; font-weight:700; color:#fff; margin-bottom:4px;">📊 rNPV估值计算器</div>
+        <div style="font-size:12px; color:#9ca3af;">基于行业参数库的rNPV估值模型，输出专业估值区间</div>
+      </div>
+    </div>
+    <div style="margin-top:20px; text-align:center;">
+      <button class="action-btn primary" onclick="closeModal()">了解详情</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ 全局状态 ============
+let currentDemo = 'demo1';
+let analysisTimer = null;
+
+// ============ 示例BP数据 ============
+const DEMO_DATA = {
+  demo1: {
+    title: '示例A：创新药企 · 肿瘤免疫',
+    file: 'XX生物_商业计划书_v3.2.pdf',
+    scores: { framework: 19, pipeline: 24, capital: 17, risk: 14 },
+    total: 74,
+    grade: 'B',
+    gradeText: 'B级 · 良好',
+    frameworkStatus: '良好',
+    pipelineStatus: '优秀',
+    capitalStatus: '需关注',
+    riskStatus: '需关注',
+    frameworkDesc: '结构较完整，逻辑基本闭环，叙事清晰',
+    pipelineDesc: '管线竞争力强，临床数据扎实',
+    capitalDesc: '估值依据部分缺失，融资规模需论证',
+    riskDesc: '存在合规表述与现金流压力风险',
+    risks: [
+      { level: 'high', title: '合规风险：夸大疗效表述', desc: 'BP中多处使用"治愈""根治"等绝对化表述，涉嫌违反《广告法》及药品宣传规范，可能影响后续融资尽调与上市审核。', loc: '第12页 · 临床数据章节' },
+      { level: 'high', title: '现金流压力：现金跑道不足', desc: '按当前烧钱率测算，现有现金仅可支撑约9个月，若融资进度延迟将面临资金链断裂风险。', loc: '第28页 · 财务预测章节' },
+      { level: 'mid', title: '研发失败率：临床II期风险', desc: 'PD-1/PD-L1双抗赛道竞争激烈，同类管线临床II期成功率约55%，存在研发失败风险。', loc: '第15页 · 管线章节' },
+      { level: 'mid', title: '估值依据缺失', desc: 'BP中未提供rNPV估值模型或可比交易依据，估值合理性无法验证。', loc: '第30页 · 融资章节' },
+      { level: 'low', title: '专利到期风险', desc: '核心专利到期时间约2035年，但未提供FTO分析报告。', loc: '第18页 · 知识产权章节' }
+    ],
+    frameworkReport: [
+      { tag: 'good', title: '结构完整性', content: 'BP包含<b>公司概况、团队介绍、市场分析、管线布局、财务预测、融资计划</b>等核心章节，结构较为完整。', suggestion: '建议补充"里程碑规划"章节，明确未来18-24个月的关键节点。' },
+      { tag: 'warn', title: '商业逻辑闭环', content: '从<b>临床痛点→技术方案→市场空间→商业模式→财务预测</b>的逻辑链条基本完整，但<b>商业模式章节</b>对BD合作、授权许可等变现路径阐述不足。', suggestion: '建议补充BD合作策略与潜在合作伙伴分析。' },
+      { tag: 'good', title: '叙事流畅度', content: '整体叙事逻辑清晰，数据支撑度较好，语言表达专业。' }
+    ],
+    pipelineReport: [
+      { tag: 'good', title: '临床数据解析', content: '核心管线处于<b>临床II期</b>，样本量设计合理（n=120），主要终点指标明确（ORR、PFS），数据读出时间规划清晰。', suggestion: '建议补充II期中期数据读出时间表与决策节点。' },
+      { tag: 'good', title: '技术差异化', content: 'PD-1/PD-L1双抗具备<b>差异化优势</b>，对标竞品（如康方生物AK112）在适应症选择上有所区分。', suggestion: '建议补充与竞品的头对头对比数据。' },
+      { tag: 'warn', title: '专利壁垒', content: '核心专利覆盖<b>化合物、制剂、适应症</b>，但未提供FTO分析报告，存在潜在侵权风险。', suggestion: '建议补充FTO分析报告与专利布局图。' }
+    ],
+    capitalReport: [
+      { tag: 'warn', title: '估值合理性', content: 'BP提出<b>投前估值8亿元</b>，但未提供rNPV估值模型或可比交易依据，估值合理性无法验证。', suggestion: '建议补充rNPV估值模型测算过程与可比交易对标。' },
+      { tag: 'warn', title: '融资金额与稀释', content: '拟融资<b>2亿元</b>，对应稀释比例约20%，处于行业合理区间，但资金用途分配与管线里程碑匹配度需进一步论证。', suggestion: '建议补充资金用途明细表与里程碑对应关系。' },
+      { tag: 'good', title: '资金使用计划', content: '资金使用计划涵盖<b>临床推进、团队扩充、运营储备</b>，分配比例基本合理。' }
+    ],
+    suggestions: [
+      '补充rNPV估值模型测算过程，提供可比交易对标数据，增强估值说服力',
+      '删除或修改"治愈""根治"等绝对化表述，确保合规宣传',
+      '补充18个月现金跑道测算与融资断档应急预案',
+      '补充FTO分析报告与专利布局图，降低知识产权风险',
+      '补充BD合作策略与潜在合作伙伴分析，完善商业模式章节',
+      '补充II期中期数据读出时间表与关键决策节点'
+    ]
+  },
+  demo2: {
+    title: '示例B：骨科器械 · 高值耗材',
+    file: 'XX医疗_商业计划书_v2.0.pdf',
+    scores: { framework: 21, pipeline: 22, capital: 19, risk: 16 },
+    total: 78,
+    grade: 'B',
+    gradeText: 'B级 · 良好',
+    frameworkStatus: '优秀',
+    pipelineStatus: '良好',
+    capitalStatus: '良好',
+    riskStatus: '良好',
+    frameworkDesc: '结构完整，逻辑闭环清晰',
+    pipelineDesc: '产品已获注册证，技术壁垒明确',
+    capitalDesc: '估值依据较充分',
+    riskDesc: '存在少量合规与市场风险',
+    risks: [
+      { level: 'mid', title: '市场风险：集采政策影响', desc: '骨科高值耗材纳入集采范围，产品定价与毛利率可能受到集采政策影响。', loc: '第20页 · 市场分析章节' },
+      { level: 'mid', title: '合规风险：宣传表述', desc: 'BP中"全球首创"表述缺乏充分证据支撑，建议补充权威认证或临床数据。', loc: '第8页 · 产品介绍章节' },
+      { level: 'low', title: '现金流压力', desc: '现金跑道约14个月，处于安全区间，但需关注后续融资节奏。', loc: '第25页 · 财务章节' }
+    ],
+    frameworkReport: [
+      { tag: 'good', title: '结构完整性', content: 'BP结构完整，包含<b>公司概况、产品介绍、市场分析、竞争格局、财务预测、融资计划</b>等全部核心章节。' },
+      { tag: 'good', title: '商业逻辑闭环', content: '从<b>临床需求→产品方案→注册证→市场准入→商业模式→财务预测</b>的逻辑链条完整闭环。' },
+      { tag: 'good', title: '叙事流畅度', content: '叙事逻辑清晰，数据支撑充分，表达专业。' }
+    ],
+    pipelineReport: [
+      { tag: 'good', title: '产品注册状态', content: '核心产品已获<b>NMPA三类医疗器械注册证</b>，具备市场准入资格。' },
+      { tag: 'good', title: '技术差异化', content: '3D打印植入物具备<b>个性化定制</b>优势，对标竞品在材料与工艺上有所区分。' },
+      { tag: 'warn', title: '专利壁垒', content: '核心专利覆盖<b>材料配方、打印工艺、结构设计</b>，但专利到期时间较早（约2030年）。' }
+    ],
+    capitalReport: [
+      { tag: 'good', title: '估值合理性', content: 'BP提供<b>可比公司估值</b>与<b>DCF模型</b>双重验证，估值依据较充分。' },
+      { tag: 'good', title: '融资金额与稀释', content: '拟融资<b>1.5亿元</b>，对应稀释比例约15%，处于合理区间。' },
+      { tag: 'good', title: '资金使用计划', content: '资金使用计划清晰，与产能扩张目标匹配。' }
+    ],
+    suggestions: [
+      '补充集采政策应对策略与价格风险分析',
+      '修改"全球首创"表述，补充权威认证或临床数据支撑',
+      '补充专利到期后的竞争应对策略'
+    ]
+  },
+  demo3: {
+    title: '示例C：CXO服务 · 临床CRO',
+    file: 'XX医药服务_商业计划书_v1.5.pdf',
+    scores: { framework: 16, pipeline: 18, capital: 15, risk: 12 },
+    total: 61,
+    grade: 'C',
+    gradeText: 'C级 · 一般',
+    frameworkStatus: '需关注',
+    pipelineStatus: '需关注',
+    capitalStatus: '需关注',
+    riskStatus: '需关注',
+    frameworkDesc: '结构存在缺失，逻辑需完善',
+    pipelineDesc: '服务能力描述不够具体',
+    capitalDesc: '估值依据不足',
+    riskDesc: '存在多项风险需关注',
+    risks: [
+      { level: 'high', title: '合规风险：资质缺失', desc: 'BP中未提及GCP认证、GLP认证等关键资质，可能影响客户信任与业务开展。', loc: '第10页 · 公司介绍章节' },
+      { level: 'high', title: '现金流压力：烧钱率过高', desc: '按当前运营成本测算，现金跑道仅约6个月，存在严重资金链风险。', loc: '第22页 · 财务章节' },
+      { level: 'mid', title: '市场风险：竞争激烈', desc: '临床CRO市场竞争激烈，头部企业（如泰格医药、药明康德）占据主要市场份额。', loc: '第15页 · 市场分析章节' },
+      { level: 'mid', title: '估值依据缺失', desc: 'BP未提供任何估值模型或可比交易依据。', loc: '第25页 · 融资章节' }
+    ],
+    frameworkReport: [
+      { tag: 'warn', title: '结构完整性', content: 'BP缺少<b>团队介绍、竞争格局分析</b>等关键章节，结构不完整。', suggestion: '建议补充核心团队背景与行业经验介绍。' },
+      { tag: 'warn', title: '商业逻辑闭环', content: '从<b>服务能力→市场需求→商业模式</b>的逻辑链条存在断裂，未清晰说明差异化竞争优势。', suggestion: '建议补充与头部CRO的差异化对比分析。' },
+      { tag: 'warn', title: '叙事流畅度', content: '叙事逻辑不够连贯，部分章节数据支撑不足。' }
+    ],
+    pipelineReport: [
+      { tag: 'warn', title: '服务能力', content: 'BP对服务能力描述较为笼统，未提供<b>具体项目案例、客户数量、项目成功率</b>等关键数据。', suggestion: '建议补充代表性项目案例与客户评价。' },
+      { tag: 'warn', title: '技术差异化', content: '未清晰说明与竞争对手的差异化优势，缺乏<b>技术平台、数据能力</b>等核心竞争力描述。' },
+      { tag: 'warn', title: '资质与合规', content: '未提及<b>GCP/GLP认证、ISO认证</b>等关键资质。', suggestion: '建议补充资质证书与合规体系介绍。' }
+    ],
+    capitalReport: [
+      { tag: 'bad', title: '估值合理性', content: 'BP提出<b>投前估值3亿元</b>，但未提供任何估值依据，估值合理性严重不足。', suggestion: '建议补充可比公司估值与DCF模型测算。' },
+      { tag: 'warn', title: '融资金额与稀释', content: '拟融资<b>8000万元</b>，对应稀释比例约21%，但资金用途与业务扩张计划匹配度不足。' },
+      { tag: 'warn', title: '资金使用计划', content: '资金使用计划较为笼统，未细化到具体业务板块。' }
+    ],
+    suggestions: [
+      '补充核心团队背景与行业经验介绍',
+      '补充GCP/GLP认证等关键资质证书',
+      '补充代表性项目案例与客户评价',
+      '补充可比公司估值与DCF模型测算',
+      '补充与头部CRO的差异化对比分析',
+      '制定18个月现金跑道管理计划'
+    ]
+  }
+};
+
+// ============ 页面切换 ============
+function showPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function updateSteps(currentStep) {
+  document.querySelectorAll('.step').forEach((s, i) => {
+    s.classList.remove('active', 'done');
+    if (i + 1 < currentStep) s.classList.add('done');
+    if (i + 1 === currentStep) s.classList.add('active');
+  });
+  document.querySelectorAll('.step-line').forEach((l, i) => {
+    l.classList.toggle('done', i + 1 < currentStep);
+  });
+}
+
+// ============ 上传处理 ============
+function handleUploadClick() {
+  // 模拟文件选择后直接进入分析
+  startDemo('demo1');
+}
+
+// ============ 启动Demo ============
+function startDemo(demoId) {
+  currentDemo = demoId;
+  const demo = DEMO_DATA[demoId];
+  document.getElementById('analyzingFile').textContent = '正在解析：' + demo.file;
+  showPage('page-analyzing');
+  updateSteps(2);
+  runAnalysis();
+}
+
+// ============ AI分析动画 ============
+function runAnalysis() {
+  const steps = document.querySelectorAll('.analysis-step');
+  const ringFg = document.getElementById('ringFg');
+  const ringText = document.getElementById('ringText');
+  const circumference = 326.7;
+  let currentStep = 0;
+  let progress = 0;
+
+  // 重置
+  steps.forEach(s => { s.classList.remove('active', 'done'); s.querySelector('.as-status').textContent = ''; });
+  ringFg.style.strokeDashoffset = circumference;
+  ringText.textContent = '0%';
+
+  const stepInterval = setInterval(() => {
+    if (currentStep < steps.length) {
+      // 标记上一步完成
+      if (currentStep > 0) {
+        steps[currentStep - 1].classList.remove('active');
+        steps[currentStep - 1].classList.add('done');
+        steps[currentStep - 1].querySelector('.as-status').textContent = '✓';
+      }
+      // 激活当前步骤
+      steps[currentStep].classList.add('active');
+      currentStep++;
+    }
+
+    // 更新进度
+    progress += 2;
+    if (progress > 100) progress = 100;
+    const offset = circumference * (1 - progress / 100);
+    ringFg.style.strokeDashoffset = offset;
+    ringText.textContent = progress + '%';
+
+    if (progress >= 100) {
+      clearInterval(stepInterval);
+      setTimeout(() => {
+        showResult();
+      }, 500);
+    }
+  }, 120);
+}
+
+// ============ 显示结果 ============
+function showResult() {
+  const demo = DEMO_DATA[currentDemo];
+  const s = demo.scores;
+
+  // 更新头部
+  document.getElementById('resultTitle').textContent = demo.title + ' · 诊断报告';
+  document.getElementById('totalScore').innerHTML = demo.total + '<span>分</span>';
+  const gradeEl = document.getElementById('totalGrade');
+  gradeEl.textContent = demo.gradeText;
+  gradeEl.className = 'grade grade-' + demo.grade.toLowerCase();
+
+  // 更新四维评分
+  updateScoreCard('Framework', s.framework, 25, demo.frameworkStatus, demo.frameworkDesc);
+  updateScoreCard('Pipeline', s.pipeline, 30, demo.pipelineStatus, demo.pipelineDesc);
+  updateScoreCard('Capital', s.capital, 25, demo.capitalStatus, demo.capitalDesc);
+  updateScoreCard('Risk', s.risk, 20, demo.riskStatus, demo.riskDesc);
+
+  // 渲染风险列表
+  renderRisks(demo.risks);
+
+  // 渲染详细报告
+  renderReport('frameworkReport', demo.frameworkReport);
+  renderReport('pipelineReport', demo.pipelineReport);
+  renderReport('capitalReport', demo.capitalReport);
+
+  // 渲染建议
+  renderSuggestions(demo.suggestions);
+
+  // 绘制雷达图
+  drawRadar(s);
+  drawBenchmark(s);
+
+  // 切换页面
+  showPage('page-result');
+  updateSteps(3);
+
+  // 动画延迟填充进度条
+  setTimeout(() => {
+    document.getElementById('barFramework').style.width = (s.framework / 25 * 100) + '%';
+    document.getElementById('barPipeline').style.width = (s.pipeline / 30 * 100) + '%';
+    document.getElementById('barCapital').style.width = (s.capital / 25 * 100) + '%';
+    document.getElementById('barRisk').style.width = (s.risk / 20 * 100) + '%';
+  }, 100);
+}
+
+function updateScoreCard(name, score, max, status, desc) {
+  document.getElementById('score' + name).innerHTML = score + '<span>/' + max + '</span>';
+  document.getElementById('desc' + name).textContent = desc;
+  const statusEl = document.getElementById('status' + name);
+  statusEl.textContent = status;
+  statusEl.className = 'sc-status ' + (status === '优秀' ? 'status-good' : status === '良好' ? 'status-good' : status === '需关注' ? 'status-warn' : 'status-bad');
+}
+
+function renderRisks(risks) {
+  const container = document.getElementById('riskList');
+  container.innerHTML = risks.map(r => `
+    <div class="risk-item ${r.level}">
+      <div class="ri-head">
+        <span class="ri-title">${r.title}</span>
+        <span class="ri-level ${r.level}">${r.level === 'high' ? '高风险' : r.level === 'mid' ? '中风险' : '低风险'}</span>
+      </div>
+      <div class="ri-desc">${r.desc}</div>
+      <div class="ri-loc">📍 位置：<b>${r.loc}</b></div>
+    </div>
+  `).join('');
+}
+
+function renderReport(containerId, items) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = items.map(item => `
+    <div class="report-item">
+      <div class="ri-title">
+        ${item.title}
+        <span class="tag ${item.tag}">${item.tag === 'good' ? '✓ 通过' : item.tag === 'warn' ? '⚠ 需优化' : '✗ 需整改'}</span>
+      </div>
+      <div class="ri-content">${item.content}</div>
+      ${item.suggestion ? `<div class="ri-suggestion">💡 ${item.suggestion}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function renderSuggestions(suggestions) {
+  const container = document.getElementById('suggestionList');
+  container.innerHTML = suggestions.map((s, i) => `
+    <div class="sug-item">
+      <div class="sug-num">${i + 1}</div>
+      <div class="sug-text">${s}</div>
+    </div>
+  `).join('');
+}
+
+// ============ 雷达图绘制 ============
+function drawRadar(scores) {
+  const canvas = document.getElementById('radarCanvas');
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = 400;
+  const h = canvas.height = 300;
+  const cx = w / 2, cy = h / 2 + 10;
+  const radius = 100;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // 网格
+  const labels = ['基础框架', '管线诊断', '资本逻辑', '风险控制'];
+  const maxValues = [25, 30, 25, 20];
+  const values = [scores.framework, scores.pipeline, scores.capital, scores.risk];
+
+  // 绘制网格
+  for (let ring = 1; ring <= 4; ring++) {
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) {
+      const angle = (Math.PI * 2 * i / 4) - Math.PI / 2;
+      const r = radius * ring / 4;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(255,255,255,.1)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // 绘制轴线
+  for (let i = 0; i < 4; i++) {
+    const angle = (Math.PI * 2 * i / 4) - Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
+    ctx.strokeStyle = 'rgba(255,255,255,.15)';
+    ctx.stroke();
+  }
+
+  // 绘制数据区域
+  ctx.beginPath();
+  for (let i = 0; i < 4; i++) {
+    const angle = (Math.PI * 2 * i / 4) - Math.PI / 2;
+    const ratio = values[i] / maxValues[i];
+    const r = radius * ratio;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(255,215,0,.2)';
+  ctx.fill();
+  ctx.strokeStyle = '#ffd700';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // 数据点
+  for (let i = 0; i < 4; i++) {
+    const angle = (Math.PI * 2 * i / 4) - Math.PI / 2;
+    const ratio = values[i] / maxValues[i];
+    const r = radius * ratio;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffd700';
+    ctx.fill();
+  }
+
+  // 标签
+  ctx.fillStyle = '#e0e0e0';
+  ctx.font = '13px sans-serif';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < 4; i++) {
+    const angle = (Math.PI * 2 * i / 4) - Math.PI / 2;
+    const x = cx + (radius + 30) * Math.cos(angle);
+    const y = cy + (radius + 30) * Math.sin(angle);
+    ctx.fillText(labels[i], x, y);
+  }
+}
+
+function drawBenchmark(scores) {
+  const canvas = document.getElementById('benchmarkCanvas');
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = 400;
+  const h = canvas.height = 300;
+  const cx = w / 2, cy = h / 2 + 10;
+  const radius = 100;
+
+  ctx.clearRect(0, 0, w, h);
+
+  const labels = ['基础框架', '管线诊断', '资本逻辑', '风险控制'];
+  const maxValues = [25, 30, 25, 20];
+  const values = [scores.framework, scores.pipeline, scores.capital, scores.risk];
+  const benchmark = [18, 20, 17, 14]; // 行业基准
+
+  // 网格
+  for (let ring = 1; ring <= 4; ring++) {
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) {
+      const angle = (Math.PI * 2 * i / 4) - Math.PI / 2;
+      const r = radius * ring / 4;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(255,255,255,.1)';
+    ctx.stroke();
+  }
+
+  // 绘制基准区域（灰色）
+  ctx.beginPath();
+  for (let i = 0; i < 4; i++) {
+    const angle = (Math.PI * 2 * i / 4) - Math.PI / 2;
+    const ratio = benchmark[i] / maxValues[i];
+    const r = radius * ratio;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(255,255,255,.08)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.4)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // 绘制数据区域（金色）
+  ctx.beginPath();
+  for (let i = 0; i < 4; i++) {
+    const angle = (Math.PI * 2 * i / 4) - Math.PI / 2;
+    const ratio = values[i] / maxValues[i];
+    const r = radius * ratio;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(0,255,136,.15)';
+  ctx.fill();
+  ctx.strokeStyle = '#00ff88';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // 标签
+  ctx.fillStyle = '#e0e0e0';
+  ctx.font = '13px sans-serif';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < 4; i++) {
+    const angle = (Math.PI * 2 * i / 4) - Math.PI / 2;
+    const x = cx + (radius + 30) * Math.cos(angle);
+    const y = cy + (radius + 30) * Math.sin(angle);
+    ctx.fillText(labels[i], x, y);
+  }
+
+  // 图例
+  ctx.font = '12px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#00ff88';
+  ctx.fillRect(20, 10, 12, 12);
+  ctx.fillStyle = '#e0e0e0';
+  ctx.fillText('本BP', 38, 21);
+  ctx.fillStyle = 'rgba(255,255,255,.5)';
+  ctx.fillRect(90, 10, 12, 12);
+  ctx.fillStyle = '#e0e0e0';
+  ctx.fillText('行业基准', 108, 21);
+}
+
+// ============ 滚动到指定区域 ============
+function scrollToSection(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ============ 弹窗 ============
+function showDownloadModal() {
+  document.getElementById('downloadModal').style.display = 'flex';
+}
+function showValueAdd() {
+  document.getElementById('valueAddModal').style.display = 'flex';
+}
+function closeModal() {
+  document.querySelectorAll('[id$="Modal"]').forEach(m => m.style.display = 'none');
+}
+
+// ============ 重置 ============
+function resetDemo() {
+  if (analysisTimer) clearInterval(analysisTimer);
+  showPage('page-upload');
+  updateSteps(1);
+}
+
+// ============ 初始化 ============
+document.addEventListener('DOMContentLoaded', () => {
+  updateSteps(1);
+});
+</script>
+</body>
+</html>
