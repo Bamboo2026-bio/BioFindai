@@ -114,7 +114,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 }
 </style>
 </head>
-<body>
+<body data-module="23">
 
 <!-- ===== 顶部导航 ===== -->
 <div class="navbar">
@@ -506,7 +506,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 
   <!-- 操作按钮 -->
   <div class="action-bar">
-    <button class="action-btn primary" onclick="nextModule()">下一步：F2 数据安全与合规 →</button>
+    <button class="action-btn primary" onclick="nextModule()">下一步：F2 计费与套餐管理 →</button>
     <button class="action-btn secondary" onclick="resetAll()">🔄 重置视图</button>
   </div>
 
@@ -526,10 +526,6 @@ function switchUm(el, umId) {
   document.getElementById(umId).classList.add('active');
 }
 
-// ============ 下一步 ============
-function nextModule() {
-  alert('模块24：F2 数据安全与合规（开发中）\n\n将管理数据安全与合规。');
-}
 
 // ============ 重置 ============
 function resetAll() {
@@ -542,5 +538,6 @@ function resetAll() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
+<script src="assets/common.js"></script>
 </body>
 </html>

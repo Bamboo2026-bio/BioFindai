@@ -114,7 +114,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 }
 </style>
 </head>
-<body>
+<body data-module="13">
 
 <!-- ===== 顶部导航 ===== -->
 <div class="navbar">
@@ -427,7 +427,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 
   <!-- 操作按钮 -->
   <div class="action-bar">
-    <button class="action-btn primary" onclick="nextModule()">下一步：B4 团队背景与执行力评估 →</button>
+    <button class="action-btn primary" onclick="nextModule()">下一步：C1 估值合理性校验 →</button>
     <button class="action-btn secondary" onclick="resetAll()">🔄 重置视图</button>
   </div>
 
@@ -447,10 +447,6 @@ function switchIp(el, ipId) {
   document.getElementById(ipId).classList.add('active');
 }
 
-// ============ 下一步 ============
-function nextModule() {
-  alert('模块14：B4 团队背景与执行力评估（开发中）\n\n将评估BP中团队背景与执行力。');
-}
 
 // ============ 重置 ============
 function resetAll() {
@@ -463,5 +459,6 @@ function resetAll() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
+<script src="assets/common.js"></script>
 </body>
 </html>

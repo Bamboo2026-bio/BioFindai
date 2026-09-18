@@ -114,7 +114,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 }
 </style>
 </head>
-<body>
+<body data-module="21">
 
 <!-- ===== 顶部导航 ===== -->
 <div class="navbar">
@@ -241,21 +241,21 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
       <div class="rp-card">
         <div class="rc-head">
           <span class="rc-title">⚠️ 融资方案待优化</span>
-          <span class="rc-score">21/20分</span>
+          <span class="rc-score">16/20分</span>
         </div>
         <div class="rc-desc">
           <b>结论：</b>估值与融资金额基本匹配，但资金使用计划需优化。<br>
-          <b>问题：</b>资金使用计划（7分）与融资金额（7分）需加强。
+          <b>问题：</b>资金使用计划（5分）与融资金额（5分）需加强。
         </div>
       </div>
       <div class="rp-card">
         <div class="rc-head">
           <span class="rc-title">⚠️ 风险控制需加强</span>
-          <span class="rc-score">20/20分</span>
+          <span class="rc-score">14/20分</span>
         </div>
         <div class="rc-desc">
           <b>结论：</b>合规风险与现金流压力需重点关注。<br>
-          <b>问题：</b>合规风险（6分）与现金流压力（7分）需加强。
+          <b>问题：</b>合规风险（5分）与现金流压力（5分）需加强。
         </div>
       </div>
     </div>
@@ -269,7 +269,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
         </div>
         <div class="rc-desc">
           <b>建议：</b>优化估值模型与融资金额测算，确保估值与融资金额匹配。<br>
-          <b>预期：</b>融资方案评分可提升至25分以上。
+          <b>预期：</b>融资方案评分可提升至18分以上（满分20分）。
         </div>
       </div>
       <div class="rp-card">
@@ -279,7 +279,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
         </div>
         <div class="rc-desc">
           <b>建议：</b>完善合规披露，优化现金流管理，降低研发失败风险。<br>
-          <b>预期：</b>风险控制评分可提升至25分以上。
+          <b>预期：</b>风险控制评分可提升至18分以上（满分20分）。
         </div>
       </div>
       <div class="rp-card">
@@ -418,7 +418,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 
   <!-- 操作按钮 -->
   <div class="action-bar">
-    <button class="action-btn primary" onclick="nextModule()">下一步：E5 综合诊断报告生成 →</button>
+    <button class="action-btn primary" onclick="nextModule()">下一步：E5 可视化诊断看板 →</button>
     <button class="action-btn secondary" onclick="resetAll()">🔄 重置视图</button>
   </div>
 
@@ -438,10 +438,6 @@ function switchRp(el, rpId) {
   document.getElementById(rpId).classList.add('active');
 }
 
-// ============ 下一步 ============
-function nextModule() {
-  alert('模块22：E5 综合诊断报告生成（开发中）\n\n将生成BP综合诊断报告。');
-}
 
 // ============ 重置 ============
 function resetAll() {
@@ -454,5 +450,6 @@ function resetAll() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
+<script src="assets/common.js"></script>
 </body>
 </html>

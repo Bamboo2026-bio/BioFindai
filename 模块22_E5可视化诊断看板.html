@@ -130,7 +130,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 }
 </style>
 </head>
-<body>
+<body data-module="22">
 
 <!-- ===== 顶部导航 ===== -->
 <div class="navbar">
@@ -250,14 +250,14 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
             <line x1="200" y1="200" x2="200" y2="360" stroke="rgba(255,255,255,.2)" stroke-width="1"/>
             <line x1="200" y1="200" x2="60" y2="270" stroke="rgba(255,255,255,.2)" stroke-width="1"/>
             <line x1="200" y1="200" x2="60" y2="130" stroke="rgba(255,255,255,.2)" stroke-width="1"/>
-            <!-- 数据多边形：内容质量23/30=77%, 技术实力23/30=77%, 融资方案21/20=105%→100%, 风险控制20/20=100% -->
-            <!-- 内容质量(77%): 200,40→200,77 技术实力(77%): 340,130→308,146 融资方案(100%): 340,270→340,270 风险控制(100%): 200,360→200,360 -->
-            <polygon points="200,77 308,146 340,270 200,360 60,270 60,130" fill="rgba(255,215,0,.15)" stroke="#ffd700" stroke-width="2"/>
+            <!-- 数据多边形：内容质量23/30=77%, 技术实力23/30=77%, 融资方案16/20=80%, 风险控制14/20=70% -->
+            <!-- 内容质量(77%): 200,40→200,77 技术实力(77%): 340,130→308,146 融资方案(80%): 340,270→312,256 风险控制(70%): 200,360→200,312 -->
+            <polygon points="200,77 308,146 312,256 200,312 60,270 60,130" fill="rgba(255,215,0,.15)" stroke="#ffd700" stroke-width="2"/>
             <!-- 数据点 -->
             <circle cx="200" cy="77" r="4" fill="#ffd700"/>
             <circle cx="308" cy="146" r="4" fill="#ffd700"/>
-            <circle cx="340" cy="270" r="4" fill="#ffd700"/>
-            <circle cx="200" cy="360" r="4" fill="#ffd700"/>
+            <circle cx="312" cy="256" r="4" fill="#ffd700"/>
+            <circle cx="200" cy="312" r="4" fill="#ffd700"/>
             <circle cx="60" cy="270" r="4" fill="#ffd700"/>
             <circle cx="60" cy="130" r="4" fill="#ffd700"/>
             <!-- 轴标签 -->
@@ -270,13 +270,13 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
             <!-- 值标签 -->
             <text x="200" y="70" text-anchor="middle" class="value-label">23/30</text>
             <text x="315" y="140" text-anchor="start" class="value-label">23/30</text>
-            <text x="345" y="265" text-anchor="start" class="value-label">21/20</text>
-            <text x="200" y="355" text-anchor="middle" class="value-label">20/20</text>
+            <text x="318" y="252" text-anchor="start" class="value-label">16/20</text>
+            <text x="200" y="307" text-anchor="middle" class="value-label">14/20</text>
           </svg>
         </div>
       </div>
       <div style="text-align:center; font-size:12px; color:#6b7280;">
-        <b style="color:#ffd700;">维度评分雷达图：</b>内容质量（23/30）· 技术实力（23/30）· 融资方案（21/20）· 风险控制（20/20）
+        <b style="color:#ffd700;">维度评分雷达图：</b>内容质量（23/30）· 技术实力（23/30）· 融资方案（16/20）· 风险控制（14/20）
       </div>
     </div>
 
@@ -315,33 +315,33 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
         </div>
         <div class="bar-row">
           <div class="br-label">C1 估值合理性</div>
-          <div class="br-track"><div class="br-fill" style="width:88%; background:linear-gradient(90deg,#ffd700,#ff8c00);">7/8</div></div>
-          <div class="br-value">7分</div>
-        </div>
-        <div class="bar-row">
-          <div class="br-label">C2 融资金额</div>
-          <div class="br-track"><div class="br-fill" style="width:88%; background:linear-gradient(90deg,#ffd700,#ff8c00);">7/8</div></div>
-          <div class="br-value">7分</div>
-        </div>
-        <div class="bar-row">
-          <div class="br-label">C3 资金使用</div>
-          <div class="br-track"><div class="br-fill" style="width:88%; background:linear-gradient(90deg,#ffd700,#ff8c00);">7/8</div></div>
-          <div class="br-value">7分</div>
-        </div>
-        <div class="bar-row">
-          <div class="br-label">D1 合规风险</div>
-          <div class="br-track"><div class="br-fill" style="width:75%; background:linear-gradient(90deg,#ff4444,#ff6666);">6/8</div></div>
+          <div class="br-track"><div class="br-fill" style="width:75%; background:linear-gradient(90deg,#ffd700,#ff8c00);">6/8</div></div>
           <div class="br-value">6分</div>
         </div>
         <div class="bar-row">
+          <div class="br-label">C2 融资金额</div>
+          <div class="br-track"><div class="br-fill" style="width:83%; background:linear-gradient(90deg,#ffd700,#ff8c00);">5/6</div></div>
+          <div class="br-value">5分</div>
+        </div>
+        <div class="bar-row">
+          <div class="br-label">C3 资金使用</div>
+          <div class="br-track"><div class="br-fill" style="width:83%; background:linear-gradient(90deg,#ffd700,#ff8c00);">5/6</div></div>
+          <div class="br-value">5分</div>
+        </div>
+        <div class="bar-row">
+          <div class="br-label">D1 合规风险</div>
+          <div class="br-track"><div class="br-fill" style="width:63%; background:linear-gradient(90deg,#ff4444,#ff6666);">5/8</div></div>
+          <div class="br-value">5分</div>
+        </div>
+        <div class="bar-row">
           <div class="br-label">D2 现金流</div>
-          <div class="br-track"><div class="br-fill" style="width:88%; background:linear-gradient(90deg,#ff4444,#ff6666);">7/8</div></div>
-          <div class="br-value">7分</div>
+          <div class="br-track"><div class="br-fill" style="width:83%; background:linear-gradient(90deg,#ff4444,#ff6666);">5/6</div></div>
+          <div class="br-value">5分</div>
         </div>
         <div class="bar-row">
           <div class="br-label">D3 研发失败率</div>
-          <div class="br-track"><div class="br-fill" style="width:88%; background:linear-gradient(90deg,#ff4444,#ff6666);">7/8</div></div>
-          <div class="br-value">7分</div>
+          <div class="br-track"><div class="br-fill" style="width:67%; background:linear-gradient(90deg,#ff4444,#ff6666);">4/6</div></div>
+          <div class="br-value">4分</div>
         </div>
       </div>
       <div style="text-align:center; font-size:12px; color:#6b7280;">
@@ -412,18 +412,18 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
         <tr>
           <td><b>C · 融资方案</b></td>
           <td>20%</td>
-          <td>21分</td>
+          <td>16分</td>
           <td>20分</td>
-          <td>105%</td>
-          <td><span class="tag good">✅ 优秀</span></td>
+          <td>80%</td>
+          <td><span class="tag warn">⚠️ 一般</span></td>
         </tr>
         <tr>
           <td><b>D · 风险控制</b></td>
           <td>20%</td>
+          <td>14分</td>
           <td>20分</td>
-          <td>20分</td>
-          <td>100%</td>
-          <td><span class="tag good">✅ 优秀</span></td>
+          <td>70%</td>
+          <td><span class="tag warn">⚠️ 一般</span></td>
         </tr>
       </table>
     </div>
@@ -451,7 +451,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
         </tr>
         <tr>
           <td><b>待优化维度</b></td>
-          <td>融资方案（21分）· 风险控制（20分）</td>
+          <td>融资方案（16分）· 风险控制（14分）</td>
         </tr>
         <tr>
           <td><b>关键改进</b></td>
@@ -467,7 +467,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 
   <!-- 操作按钮 -->
   <div class="action-bar">
-    <button class="action-btn primary" onclick="nextModule()">下一步：E6 综合诊断报告生成 →</button>
+    <button class="action-btn primary" onclick="nextModule()">下一步：模块23 · F1 用户与权限管理 →</button>
     <button class="action-btn secondary" onclick="resetAll()">🔄 重置视图</button>
   </div>
 
@@ -478,6 +478,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
   本页面为演示用途，所有数据均为模拟数据
 </div>
 
+<script src="assets/common.js"></script>
 <script>
 // ============ 内容切换 ============
 function switchDb(el, dbId) {
@@ -485,22 +486,6 @@ function switchDb(el, dbId) {
   el.classList.add('active');
   document.querySelectorAll('.db-content').forEach(c => c.classList.remove('active'));
   document.getElementById(dbId).classList.add('active');
-}
-
-// ============ 下一步 ============
-function nextModule() {
-  alert('模块23：E6 综合诊断报告生成（开发中）\n\n将生成BP综合诊断报告。');
-}
-
-// ============ 重置 ============
-function resetAll() {
-  document.querySelectorAll('.db-nav-item').forEach((n, i) => {
-    n.classList.toggle('active', i === 0);
-  });
-  document.querySelectorAll('.db-content').forEach((c, i) => {
-    c.classList.toggle('active', i === 0);
-  });
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
 </body>

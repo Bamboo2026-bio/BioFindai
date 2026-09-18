@@ -172,7 +172,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 }
 </style>
 </head>
-<body>
+<body data-module="1">
 
 <!-- ===== 顶部导航 ===== -->
 <div class="navbar">
@@ -552,10 +552,6 @@ function switchTab(el, tabId) {
   document.getElementById(tabId).classList.add('active');
 }
 
-// ============ 下一步 ============
-function nextModule() {
-  alert('模块2：结构化信息抽取引擎（开发中）\n\n将自动抽取公司信息、管线数据、财务数据、融资条款等关键字段。');
-}
 
 // ============ 重置 ============
 function resetAll() {
@@ -580,5 +576,6 @@ uploadZone.addEventListener('drop', (e) => {
   startParsing();
 });
 </script>
+<script src="assets/common.js"></script>
 </body>
 </html>

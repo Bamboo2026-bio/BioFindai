@@ -135,7 +135,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 }
 </style>
 </head>
-<body>
+<body data-module="2">
 
 <!-- ===== 顶部导航 ===== -->
 <div class="navbar">
@@ -807,10 +807,6 @@ function switchTab(el, tabId) {
   document.getElementById(tabId).classList.add('active');
 }
 
-// ============ 下一步 ============
-function nextModule() {
-  alert('模块3：行业知识库搭建（开发中）\n\n将搭建靶点/临床分期/NMPA-FDA政策/医保集采/赛道规模等结构化知识库。');
-}
 
 // ============ 重置 ============
 function resetAll() {
@@ -820,5 +816,6 @@ function resetAll() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
+<script src="assets/common.js"></script>
 </body>
 </html>

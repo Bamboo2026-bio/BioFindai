@@ -190,9 +190,9 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
   <div class="logo">🧬 BioFin<span>智投引擎</span></div>
   <div class="nav-right">
     <span class="nav-link active">BP诊断</span>
-    <span class="nav-link">融资方案</span>
-    <span class="nav-link">机构匹配</span>
-    <span class="nav-link">估值计算</span>
+    <span class="nav-link" data-module="15">融资方案</span>
+    <span class="nav-link" data-module="26">机构匹配</span>
+    <span class="nav-link" data-module="14">估值计算</span>
     <span class="demo-badge">DEMO 演示版</span>
   </div>
 </div>
@@ -258,6 +258,16 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
             <span class="dc-tag">CXO服务</span>
             <span class="dc-tag">临床CRO</span>
             <span class="dc-tag">融资8000万</span>
+          </div>
+        </div>
+        <div class="demo-card" onclick="startDemo('demo4')">
+          <div class="dc-icon">🩸</div>
+          <div class="dc-title">示例D：BTK抑制剂 · 血液肿瘤</div>
+          <div class="dc-desc">某创新药企BP，核心产品为高选择性BTK抑制剂（奥布替尼类），已获批复发/难治性CLL/SLL与MCL，拟融资推进适应症拓展与国际化。</div>
+          <div class="dc-tags">
+            <span class="dc-tag">BTK抑制剂</span>
+            <span class="dc-tag">血液肿瘤</span>
+            <span class="dc-tag">已获批上市</span>
           </div>
         </div>
       </div>
@@ -433,7 +443,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 </div>
 
 <!-- 下载弹窗 -->
-<div id="downloadModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.8); z-index:1000; display:none; justify-content:center; align-items:center;">
+<div id="downloadModal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.8); z-index:1000; justify-content:center; align-items:center;">
   <div style="background:#131c22; border-radius:12px; padding:30px; max-width:400px; width:90%; text-align:center; border:1px solid rgba(255,255,255,.1);">
     <div style="font-size:48px; margin-bottom:16px;">📄</div>
     <h3 style="color:#fff; margin-bottom:10px;">诊断报告已生成</h3>
@@ -476,10 +486,19 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
   </div>
 </div>
 
+<script src="assets/common.js"></script>
 <script>
 // ============ 全局状态 ============
 let currentDemo = 'demo1';
 let analysisTimer = null;
+
+// HTML 转义（优先使用 common.js 提供的实现，兜底本地实现）
+const ESC_MAP = { '&': '\u0026amp;', '<': '\u0026lt;', '>': '\u0026gt;', '"': '\u0026quot;', "'": '\u0026#39;' };
+const esc = (window.BioFin && window.BioFin.escapeHtml) || function (v) {
+  if (v === null || v === undefined) return '';
+  return String(v).replace(/[&<>"']/g, c => ESC_MAP[c]);
+};
+
 
 // ============ 示例BP数据 ============
 const DEMO_DATA = {
@@ -614,6 +633,53 @@ const DEMO_DATA = {
       '补充与头部CRO的差异化对比分析',
       '制定18个月现金跑道管理计划'
     ]
+  },
+  demo4: {
+    title: '示例D：BTK抑制剂 · 血液肿瘤',
+    file: '诺诚健华_奥布替尼_商业计划书.pdf',
+    scores: { framework: 20, pipeline: 26, capital: 18, risk: 15 },
+    total: 79,
+    grade: 'B',
+    gradeText: 'B级 · 良好',
+    frameworkStatus: '良好',
+    pipelineStatus: '优秀',
+    capitalStatus: '良好',
+    riskStatus: '需关注',
+    frameworkDesc: '结构完整，临床与市场数据扎实',
+    pipelineDesc: 'BTK抑制剂已获批，管线梯队清晰',
+    capitalDesc: '融资用途明确，估值依据待补充',
+    riskDesc: '存在竞争、政策与附条件批准风险',
+    risks: [
+      { level: 'high', title: '竞争风险：市场份额高度集中', desc: '伊布替尼（Janssen）2020年中国市场份额高达86.5%，泽布替尼（百济神州）占13.5%，奥布替尼作为后进入者面临激烈竞争，且尚未纳入国家医保目录。', loc: '第13页 · 市场竞争章节' },
+      { level: 'high', title: '附条件批准风险：需完成确证性试验', desc: '奥布替尼为附条件获批上市，需完成上市后确证性III期临床试验（ICP-CL-00111、ICP-CL-00113）。截至2021年9月30日，CLL/SLL一线试验仅入组41/218例，若未达要求可能影响批准状态。', loc: '第4页 · 临床试验章节' },
+      { level: 'mid', title: '政策风险：医保准入与集采', desc: '奥布替尼尚未纳入国家医保目录，医保前年治疗费用约26.3万元，患者可及性受限；《以临床价值为导向的抗肿瘤药物临床研发指导原则》等政策可能影响研发与市场空间。', loc: '第13页 · 政策影响章节' },
+      { level: 'mid', title: '财务风险：累计未弥补亏损', desc: '公司仅奥布替尼一款产品上市，2021年1-9月销售额1.75亿元，收入尚不能覆盖其他在研产品投入，存在累计未弥补亏损，短期内仍需依赖外部融资。', loc: '第15页 · 财务章节' },
+      { level: 'low', title: '专利与FTO风险', desc: 'BTK抑制剂赛道专利密集，BP未提供完整的FTO（自由实施）分析报告，存在潜在知识产权纠纷风险。', loc: '第18页 · 知识产权章节' }
+    ],
+    frameworkReport: [
+      { tag: 'good', title: '结构完整性', content: 'BP包含<b>公司概况、核心产品、临床数据、市场与竞争格局、在研管线、财务与融资、风险因素、发展战略</b>等核心章节，结构完整。', suggestion: '建议补充"里程碑规划"章节，明确未来18-24个月关键节点（如MZL/WM的NDA提交、美国MCL的NDA提交）。' },
+      { tag: 'good', title: '商业逻辑闭环', content: '从<b>临床未满足需求→BTK抑制剂技术方案→已获批上市→商业化渠道→适应症拓展→财务预测</b>的逻辑链条完整闭环，且已有真实销售数据支撑。', suggestion: '建议补充BD授权合作（License-out）策略与海外市场拓展路径。' },
+      { tag: 'good', title: '叙事流畅度', content: '叙事逻辑清晰，临床数据、竞争对比、销售数据支撑充分，专业性强。' }
+    ],
+    pipelineReport: [
+      { tag: 'good', title: '临床数据解析', content: '核心产品奥布替尼为<b>高选择性、共价不可逆口服BTK抑制剂</b>，采用单环母核设计，无手性中心，提高对BTK激酶的选择性。已基于ICP-CL-00102、ICP-CL-00103两项试验<b>附条件获批</b>治疗复发/难治性CLL/SLL与MCL。', suggestion: '建议补充已获批适应症的ORR、PFS等关键疗效数据及安全性数据。' },
+      { tag: 'good', title: '技术差异化', content: '奥布替尼具备<b>高选择性、良好PK/PD特性与靶点占有率</b>，被纳入2021版《CSCO淋巴瘤诊疗指南》I级推荐，并获FDA<b>突破性疗法认定</b>与<b>孤儿药资格</b>。', suggestion: '建议补充与伊布替尼、泽布替尼的头对头或间接对比数据，强化差异化证据。' },
+      { tag: 'warn', title: '专利壁垒', content: 'BP未提供完整的<b>FTO分析报告与专利布局图</b>，BTK抑制剂赛道专利密集，存在潜在侵权风险。', suggestion: '建议补充FTO分析报告、核心专利到期时间及专利布局图。' }
+    ],
+    capitalReport: [
+      { tag: 'warn', title: '估值合理性', content: 'BP未提供<b>rNPV估值模型</b>或可比交易（如BTK抑制剂领域License交易）对标依据，估值合理性有待验证。', suggestion: '建议补充rNPV估值模型测算过程，并对标泽布替尼、阿卡替尼等可比交易。' },
+      { tag: 'good', title: '融资金额与稀释', content: '融资用途明确，涵盖<b>在研产品临床试验推进、产品管线拓宽、销售网络建设、补充流动资金</b>，与管线里程碑匹配度较好。', suggestion: '建议补充资金用途明细表与各适应症里程碑的对应关系。' },
+      { tag: 'good', title: '资金使用计划', content: '资金使用计划与<b>适应症拓展（MZL、WM、一线CLL/SLL、一线MCL）及国际化（美国MCL注册性II期）</b>目标匹配，分配比例合理。' }
+    ],
+    suggestions: [
+      '补充rNPV估值模型测算过程，对标泽布替尼、阿卡替尼等BTK抑制剂可比交易',
+      '补充已获批适应症的关键疗效数据（ORR、PFS）与安全性数据',
+      '补充FTO分析报告与专利布局图，降低知识产权风险',
+      '制定医保准入策略，提升奥布替尼患者可及性与市场渗透率',
+      '补充与伊布替尼、泽布替尼的差异化竞争策略与头对头/间接对比数据',
+      '补充BD授权合作（License-out）策略与海外市场拓展路径',
+      '补充18个月现金跑道测算与融资断档应急预案'
+    ]
   }
 };
 
@@ -660,12 +726,15 @@ function runAnalysis() {
   let currentStep = 0;
   let progress = 0;
 
+  // 清理可能存在的旧定时器，避免重复诊断时定时器叠加
+  if (analysisTimer) { clearInterval(analysisTimer); analysisTimer = null; }
+
   // 重置
   steps.forEach(s => { s.classList.remove('active', 'done'); s.querySelector('.as-status').textContent = ''; });
   ringFg.style.strokeDashoffset = circumference;
   ringText.textContent = '0%';
 
-  const stepInterval = setInterval(() => {
+  analysisTimer = setInterval(() => {
     if (currentStep < steps.length) {
       // 标记上一步完成
       if (currentStep > 0) {
@@ -686,7 +755,8 @@ function runAnalysis() {
     ringText.textContent = progress + '%';
 
     if (progress >= 100) {
-      clearInterval(stepInterval);
+      clearInterval(analysisTimer);
+      analysisTimer = null;
       setTimeout(() => {
         showResult();
       }, 500);
@@ -751,13 +821,13 @@ function updateScoreCard(name, score, max, status, desc) {
 function renderRisks(risks) {
   const container = document.getElementById('riskList');
   container.innerHTML = risks.map(r => `
-    <div class="risk-item ${r.level}">
+    <div class="risk-item ${esc(r.level)}">
       <div class="ri-head">
-        <span class="ri-title">${r.title}</span>
-        <span class="ri-level ${r.level}">${r.level === 'high' ? '高风险' : r.level === 'mid' ? '中风险' : '低风险'}</span>
+        <span class="ri-title">${esc(r.title)}</span>
+        <span class="ri-level ${esc(r.level)}">${r.level === 'high' ? '高风险' : r.level === 'mid' ? '中风险' : '低风险'}</span>
       </div>
-      <div class="ri-desc">${r.desc}</div>
-      <div class="ri-loc">📍 位置：<b>${r.loc}</b></div>
+      <div class="ri-desc">${esc(r.desc)}</div>
+      <div class="ri-loc">📍 位置：<b>${esc(r.loc)}</b></div>
     </div>
   `).join('');
 }
@@ -767,11 +837,11 @@ function renderReport(containerId, items) {
   container.innerHTML = items.map(item => `
     <div class="report-item">
       <div class="ri-title">
-        ${item.title}
-        <span class="tag ${item.tag}">${item.tag === 'good' ? '✓ 通过' : item.tag === 'warn' ? '⚠ 需优化' : '✗ 需整改'}</span>
+        ${esc(item.title)}
+        <span class="tag ${esc(item.tag)}">${item.tag === 'good' ? '✓ 通过' : item.tag === 'warn' ? '⚠ 需优化' : '✗ 需整改'}</span>
       </div>
       <div class="ri-content">${item.content}</div>
-      ${item.suggestion ? `<div class="ri-suggestion">💡 ${item.suggestion}</div>` : ''}
+      ${item.suggestion ? `<div class="ri-suggestion">💡 ${esc(item.suggestion)}</div>` : ''}
     </div>
   `).join('');
 }
@@ -781,7 +851,7 @@ function renderSuggestions(suggestions) {
   container.innerHTML = suggestions.map((s, i) => `
     <div class="sug-item">
       <div class="sug-num">${i + 1}</div>
-      <div class="sug-text">${s}</div>
+      <div class="sug-text">${esc(s)}</div>
     </div>
   `).join('');
 }
@@ -977,12 +1047,12 @@ function showValueAdd() {
   document.getElementById('valueAddModal').style.display = 'flex';
 }
 function closeModal() {
-  document.querySelectorAll('[id$="Modal"]').forEach(m => m.style.display = 'none');
+  document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
 }
 
 // ============ 重置 ============
 function resetDemo() {
-  if (analysisTimer) clearInterval(analysisTimer);
+  if (analysisTimer) { clearInterval(analysisTimer); analysisTimer = null; }
   showPage('page-upload');
   updateSteps(1);
 }

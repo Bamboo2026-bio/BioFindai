@@ -110,7 +110,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 }
 </style>
 </head>
-<body>
+<body data-module="24">
 
 <!-- ===== 顶部导航 ===== -->
 <div class="navbar">
@@ -467,7 +467,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 
   <!-- 操作按钮 -->
   <div class="action-bar">
-    <button class="action-btn primary" onclick="nextModule()">下一步：F3 系统监控与运维 →</button>
+    <button class="action-btn primary" onclick="nextModule()">下一步：F3 数据安全与合规审计 →</button>
     <button class="action-btn secondary" onclick="resetAll()">🔄 重置视图</button>
   </div>
 
@@ -487,10 +487,6 @@ function switchBm(el, bmId) {
   document.getElementById(bmId).classList.add('active');
 }
 
-// ============ 下一步 ============
-function nextModule() {
-  alert('模块25：F3 系统监控与运维（开发中）\n\n将管理系统监控与运维。');
-}
 
 // ============ 重置 ============
 function resetAll() {
@@ -503,5 +499,6 @@ function resetAll() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
+<script src="assets/common.js"></script>
 </body>
 </html>

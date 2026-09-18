@@ -137,7 +137,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 }
 </style>
 </head>
-<body>
+<body data-module="9">
 
 <!-- ===== 顶部导航 ===== -->
 <div class="navbar">
@@ -453,7 +453,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 
   <!-- 操作按钮 -->
   <div class="action-bar">
-    <button class="action-btn primary" onclick="nextModule()">下一步：A3 信息真实性校验 →</button>
+    <button class="action-btn primary" onclick="nextModule()">下一步：A3 叙事流畅度评估 →</button>
     <button class="action-btn secondary" onclick="resetAll()">🔄 重置视图</button>
   </div>
 
@@ -473,10 +473,6 @@ function switchCheck(el, checkId) {
   document.getElementById(checkId).classList.add('active');
 }
 
-// ============ 下一步 ============
-function nextModule() {
-  alert('模块10：A3 信息真实性校验（开发中）\n\n将校验BP中关键信息的真实性，如临床数据、财务数据、团队背景等。');
-}
 
 // ============ 重置 ============
 function resetAll() {
@@ -489,5 +485,6 @@ function resetAll() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
+<script src="assets/common.js"></script>
 </body>
 </html>
