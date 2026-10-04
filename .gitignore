@@ -30,3 +30,8 @@ build/
 
 # 日志
 *.log
+
+# 案例原始文件（体积大，仅保留 _extracted 下的提取文本用于测试）
+BioTech案例/*.pdf
+BioTech案例/*.pptx
+BioTech案例/*.docx

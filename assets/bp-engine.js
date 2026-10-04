@@ -86,6 +86,76 @@
     return null;
   }
 
+  // 抽取公司名称：优先"公司全称/公司名称"语境，其次带"有限公司"后缀
+  function extractCompany(text) {
+    var m = text.match(/(?:公司全称|公司名称|企业名称)[：:]\s*([\u4e00-\u9fa5A-Za-z0-9（）()]{4,30})/);
+    if (m) return m[1].replace(/[（(].*?[)）]/g, '').trim();
+    m = text.match(/([\u4e00-\u9fa5A-Za-z0-9]{2,20}(?:生物|医药|医疗|制药|科技|健康)[\u4e00-\u9fa5A-Za-z0-9]{0,10}(?:有限公司|股份有限公司|集团))/);
+    if (m) return m[1];
+    // 兜底：标题行中的"XX生物/医药"
+    m = text.match(/([\u4e00-\u9fa5]{2,10}(?:生物|医药|医疗|制药|科技|健康))/);
+    return m ? m[1] : '未识别';
+  }
+
+  // 抽取估值：优先"投前/投后估值"语境，排除 rNPV/管线估值等干扰
+  function extractValuation(text) {
+    // 优先：投前/投后估值（兼容"投前估值 16→30亿""投前估值20亿"等写法）
+    // 注意：仅允许"投前/投后估值"与数字间有少量空白/冒号，避免跨句误匹配
+    var m = text.match(/(?:投前|投后)估值[\s：:]{0,3}([0-9][0-9,\.]*)\s*(?:→|-|~|至)?\s*(?:[0-9][0-9,\.]*\s*)?([亿万])\s*元?/);
+    if (m) return m[1].replace(/,/g, '') + m[2] + '元';
+    // 其次：C轮/本轮估值
+    m = text.match(/(?:本轮|C轮|B轮|A轮|Pre-IPO)[^。\n]{0,10}?估值[^。\n]{0,10}?([0-9][0-9,\.]*\s*[亿万]元)/);
+    if (m) return m[1].replace(/\s/g, '');
+    // 兜底：估值/市值，但排除 rNPV/管线/期权 语境
+    var re = /(?:估值|市值)[^。\n]{0,20}?([0-9][0-9,\.]*\s*[亿万]元)/g, mm;
+    while ((mm = re.exec(text)) !== null) {
+      var ctx = text.slice(Math.max(0, mm.index - 15), mm.index);
+      if (/rNPV|管线|期权|加总|资产/.test(ctx)) continue;
+      return mm[1].replace(/\s/g, '');
+    }
+    return null;
+  }
+
+  // 抽取临床阶段：识别"最高"临床阶段（已上市 > III期 > II期 > I期 > IND > 临床前）
+  // 注意：需排除"已上市8款产品""已上市竞品"等描述竞品/行业的干扰语境
+  function extractStage(text) {
+    // 先剔除"预计/拟/将/计划…获批上市"等未来时态，避免把"预计上市"误判为"已上市"
+    var cleaned = text.replace(/(?:预计|拟|将|计划|有望|争取)[^。\n]{0,15}?(?:获批上市|上市|获批)/g, '');
+    // 再剔除描述竞品/行业/他人的"拥有X款获批上市""唯一在售""竞品已上市"等语境
+    cleaned = cleaned.replace(/(?:拥有|已有|竞品|行业|国内|国际|唯一|在售|其他公司)[^。\n]{0,15}?(?:获批上市|已上市|在售)/g, '');
+    // 剔除假设性/未来语境："即使未来有新产品获批上市""若获批上市"等
+    cleaned = cleaned.replace(/(?:即使|未来|若|如果|假设|一旦|有望)[^。\n]{0,20}?(?:获批上市|已上市|上市)/g, '');
+    var STAGES = [
+      { re: /(?:公司|产品|管线|核心产品|本品|该药)[^。\n]{0,10}(?:已上市|已获批上市|获批上市)|(?:已上市|获批上市)[^。\n]{0,6}(?:销售|商业化)/, name: '已上市' },
+      { re: /III期|临床III期|Phase\s*III|注册性临床/, name: '临床III期' },
+      { re: /II期|临床II期|Phase\s*II/, name: '临床II期' },
+      { re: /I期|临床I期|Phase\s*I/, name: '临床I期' },
+      { re: /IND|IND申报|IND准备/, name: 'IND阶段' },
+      { re: /临床前|Preclinical/, name: '临床前' },
+      // 医疗器械类阶段
+      { re: /创新医疗器械特别审查|创新器械审查|特别审查程序/, name: '创新器械审查' },
+      { re: /型检证书|型式检验|注册检验/, name: '注册检验' },
+      { re: /临床试验备案|临床验证试验/, name: '临床验证' }
+    ];
+    for (var i = 0; i < STAGES.length; i++) {
+      if (STAGES[i].re.test(cleaned)) return STAGES[i].name;
+    }
+    return '未识别';
+  }
+
+  // 抽取核心靶点：按出现频次排序，取最高频靶点
+  function extractTarget(text) {
+    var TARGETS = ['PD-1', 'PD-L1', 'BTK', 'HER2', 'EGFR', 'CLDN18.2', 'TROP2', 'CD19', 'CD20', 'CD22', 'CD30', 'CD99', 'BCMA', 'VEGF', 'ALK', 'FGFR', 'TRK', 'MSLN', 'Mesothelin', 'GPR87', 'CA9', 'GP120', 'CD32a', 'CD32α'];
+    var best = null, bestCount = 0;
+    TARGETS.forEach(function (t) {
+      var re = new RegExp(t.replace(/[.\-]/g, '\\$&'), 'gi');
+      var m = text.match(re);
+      var c = m ? m.length : 0;
+      if (c > bestCount) { bestCount = c; best = t; }
+    });
+    return best || '未识别';
+  }
+
   /* ----------------------------------------------------------
      核心：分析 BP 文本
      返回 { scores, total, grade, gradeText, risks, reports, suggestions, extracted }
@@ -102,11 +172,11 @@
 
     // ---------- 2. 抽取关键字段 ----------
     var extracted = {
-      companyName: (text.match(/([\u4e00-\u9fa5A-Za-z0-9]{2,20}(?:生物|医药|医疗|制药|科技|健康)[\u4e00-\u9fa5A-Za-z0-9]{0,10}(?:有限公司|股份有限公司|集团)?)/) || [])[1] || '未识别',
+      companyName: extractCompany(text),
       financingAmount: extractAmount(text, ['亿元', '万元']),
-      valuation: (text.match(/(?:投前|投后|估值|市值)[^。\n]{0,20}?([0-9][0-9,\\.]*\s*[亿万]元)/) || [])[1] || null,
-      stage: (text.match(/(临床前|临床I期|临床II期|临床III期|I期|II期|III期|已上市|已获批|IND|NDA)/) || [])[1] || '未识别',
-      target: (text.match(/(PD-?1|PD-?L1|BTK|HER2|EGFR|CLDN18\.2|TROP2|CD19|CD20|VEGF|ALK|FGFR|TRK)/i) || [])[1] || '未识别',
+      valuation: extractValuation(text),
+      stage: extractStage(text),
+      target: extractTarget(text),
       chars: len
     };
 
@@ -138,6 +208,56 @@
     var dBase = dCoverage * 4;                       // 最多 12
     var dDepth = clamp(Math.round((hits.compliance + hits.cashflow + hits.rdrisk) / 2), 0, 8); // 最多 8
     scores.risk = clamp(dBase + dDepth, 0, 20);
+
+    // ---------- 3.5 风险扣分（基于风险实质，而非仅内容覆盖度） ----------
+    // 说明：内容齐全 ≠ 风险低。以下扣分项反映 BP 中暴露的实质性风险。
+    var penalties = [];
+    // 临床阶段越早，研发不确定性越高（B维度扣分）
+    var stagePenalty = {
+      '临床前': 4, 'IND阶段': 3, '临床I期': 2, '临床II期': 1, '临床III期': 0, '已上市': 0,
+      '临床验证': 2, '注册检验': 1, '创新器械审查': 1, '未识别': 1
+    };
+    var sp = stagePenalty[extracted.stage] || 0;
+    if (sp > 0) {
+      scores.pipeline = clamp(scores.pipeline - sp, 0, 30);
+      var stageReason = extracted.stage === '未识别'
+        ? '未能识别明确的临床/注册阶段，研发进度信息不足'
+        : '核心管线处于' + extracted.stage + '，研发不确定性较高';
+      penalties.push({ dim: 'pipeline', points: sp, reason: stageReason });
+    }
+    // 合规风险表述（D维度扣分）
+    RISKY_PHRASES.forEach(function (rp) {
+      if (rp.re.test(text)) {
+        var p = rp.level === 'high' ? 3 : 1;
+        scores.risk = clamp(scores.risk - p, 0, 20);
+        penalties.push({ dim: 'risk', points: p, reason: rp.title });
+      }
+    });
+    // 资金缺口/融资断档风险（C维度扣分）
+    if (/资金缺口|融资断档|现金耗尽|资金链断裂|需融资/.test(text)) {
+      scores.capital = clamp(scores.capital - 2, 0, 20);
+      penalties.push({ dim: 'capital', points: 2, reason: 'BP披露存在资金缺口或融资断档风险' });
+    }
+    // 缺少估值依据（C维度扣分）
+    if (hits.valuation === 0) {
+      scores.capital = clamp(scores.capital - 2, 0, 20);
+      penalties.push({ dim: 'capital', points: 2, reason: '缺少估值模型或可比依据' });
+    }
+    // 缺少现金流披露（D维度扣分）
+    if (hits.cashflow === 0) {
+      scores.risk = clamp(scores.risk - 2, 0, 20);
+      penalties.push({ dim: 'risk', points: 2, reason: '未披露现金流/现金跑道' });
+    }
+    // 市场空间/临床价值存疑（A维度扣分）：BP或分析报告中出现"市场空间有限/临床价值不足/过于乐观"等实质性质疑
+    if (/市场空间(十分)?有限|市场规模极小|临床价值(存疑|不足)|增量价值不足|过于乐观|难以形成独立|不具备独立市场价值|预期过高/.test(text)) {
+      scores.framework = clamp(scores.framework - 4, 0, 30);
+      penalties.push({ dim: 'framework', points: 4, reason: '市场空间或临床价值存在实质性质疑' });
+    }
+    // 收入预测与市场规模严重不匹配（C维度扣分）
+    if (/产销计划|销量预测|收入预测/.test(text) && /显著高于|远高于|高于全球市场|不匹配/.test(text)) {
+      scores.capital = clamp(scores.capital - 3, 0, 20);
+      penalties.push({ dim: 'capital', points: 3, reason: '收入/销量预测与市场规模不匹配' });
+    }
 
     // ---------- 4. 综合评分与等级 ----------
     var total = scores.framework + scores.pipeline + scores.capital + scores.risk;
@@ -226,7 +346,8 @@
       reports: reports,
       suggestions: suggestions,
       extracted: extracted,
-      hits: hits
+      hits: hits,
+      penalties: penalties
     };
   }
 
