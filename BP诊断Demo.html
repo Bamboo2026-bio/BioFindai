@@ -519,9 +519,15 @@ let dynamicResult = null;   // 粘贴文本分析结果（非空时优先使用�
 // HTML 转义（优先使用 common.js 提供的实现，兜底本地实现）
 const ESC_MAP = { '&': '\u0026amp;', '<': '\u0026lt;', '>': '\u0026gt;', '"': '\u0026quot;', "'": '\u0026#39;' };
 const esc = (window.BioFin && window.BioFin.escapeHtml) || function (v) {
-  if (v === null || v === undefined) return '';
+  if (v === null || value === undefined) return '';
   return String(v).replace(/[&<>"']/g, c => ESC_MAP[c]);
 };
+
+// 富文本安全渲染：先整体转义，再仅放行 <b></b> 标签（用于报告正文加粗）
+// 这样既能保留示例数据中的 <b> 强调，又能防止动态数据注入脚本（XSS）
+function safeRich(value) {
+  return esc(value).replace(/\u0026lt;b\u0026gt;/g, '<b>').replace(/\u0026lt;\/b\u0026gt;/g, '</b>');
+}
 
 
 // ============ 示例BP数据 ============
@@ -727,8 +733,10 @@ function updateSteps(currentStep) {
 
 // ============ 上传处理 ============
 function handleUploadClick() {
-  // 模拟文件选择后直接进入分析
-  startDemo('demo1');
+  // Demo 版暂不支持真实文件上传，明确提示用户改用「粘贴文本」或「示例BP」
+  alert('📌 Demo 演示版暂不支持真实文件上传。\n\n请使用下方「粘贴 BP 文本」功能，或直接选择示例 BP 进行演示。');
+  const ta = document.getElementById('bpTextInput');
+  if (ta) { ta.scrollIntoView({ behavior: 'smooth', block: 'center' }); ta.focus(); }
 }
 
 // ============ 粘贴文本分析 ============
@@ -922,7 +930,7 @@ function renderReport(containerId, items) {
         ${esc(item.title)}
         <span class="tag ${esc(item.tag)}">${item.tag === 'good' ? '✓ 通过' : item.tag === 'warn' ? '⚠ 需优化' : '✗ 需整改'}</span>
       </div>
-      <div class="ri-content">${item.content}</div>
+      <div class="ri-content">${safeRich(item.content)}</div>
       ${item.suggestion ? `<div class="ri-suggestion">💡 ${esc(item.suggestion)}</div>` : ''}
     </div>
   `).join('');
@@ -939,11 +947,22 @@ function renderSuggestions(suggestions) {
 }
 
 // ============ 雷达图绘制 ============
+// 按 devicePixelRatio 设置画布分辨率，避免 CSS 拉伸导致模糊
+function setupHiDPICanvas(canvas, cssW, cssH) {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = cssW * dpr;
+  canvas.height = cssH * dpr;
+  canvas.style.width = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return ctx;
+}
+
 function drawRadar(scores) {
   const canvas = document.getElementById('radarCanvas');
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width = 400;
-  const h = canvas.height = 300;
+  const w = 400, h = 300;
+  const ctx = setupHiDPICanvas(canvas, w, h);
   const cx = w / 2, cy = h / 2 + 10;
   const radius = 100;
 
@@ -1026,9 +1045,8 @@ function drawRadar(scores) {
 
 function drawBenchmark(scores) {
   const canvas = document.getElementById('benchmarkCanvas');
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width = 400;
-  const h = canvas.height = 300;
+  const w = 400, h = 300;
+  const ctx = setupHiDPICanvas(canvas, w, h);
   const cx = w / 2, cy = h / 2 + 10;
   const radius = 100;
 
