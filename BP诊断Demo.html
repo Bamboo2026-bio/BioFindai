@@ -49,6 +49,18 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 .upload-card .btn:hover { transform:translateY(-2px); }
 .upload-card .formats { font-size:12px; color:#6b7280; margin-top:16px; }
 
+/* 粘贴文本分析 */
+.paste-box { margin-top:24px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:24px; }
+.paste-box h4 { color:#ffd700; font-size:15px; margin-bottom:14px; }
+.paste-box textarea { width:100%; min-height:160px; resize:vertical; background:rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:14px; color:#e0e0e0; font-size:13px; line-height:1.7; font-family:inherit; outline:none; transition:border-color .2s; }
+.paste-box textarea:focus { border-color:#ffd700; }
+.paste-box textarea::placeholder { color:#6b7280; }
+.paste-actions { display:flex; justify-content:space-between; align-items:center; margin-top:14px; flex-wrap:wrap; gap:12px; }
+.paste-hint { font-size:12px; color:#6b7280; }
+.paste-hint.ok { color:#00ff88; }
+.paste-box .btn { display:inline-block; background:linear-gradient(135deg,#ffd700,#ff8c00); color:#0f2027; padding:11px 28px; border-radius:8px; font-weight:700; font-size:14px; border:none; cursor:pointer; transition:transform .2s; }
+.paste-box .btn:hover { transform:translateY(-2px); }
+
 /* 示例BP选择 */
 .demo-select { margin-top:30px; }
 .demo-select h4 { color:#9ca3af; font-size:14px; margin-bottom:14px; text-align:center; }
@@ -227,6 +239,16 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
       <div class="formats">支持格式：.pdf .docx .pptx .txt ｜ 文件大小 ≤ 50MB</div>
     </div>
 
+    <!-- 粘贴文本分析 -->
+    <div class="paste-box">
+      <h4>✍️ 或直接粘贴 BP 文本进行智能诊断</h4>
+      <textarea id="bpTextInput" placeholder="将商业计划书正文粘贴到此处（建议 ≥ 500 字），系统将基于 E3 评分模型（A30/B30/C20/D20）进行实时诊断打分…"></textarea>
+      <div class="paste-actions">
+        <span class="paste-hint" id="pasteHint">已输入 0 字</span>
+        <button class="btn" onclick="analyzePastedText()">🚀 开始智能诊断</button>
+      </div>
+    </div>
+
     <div class="demo-select">
       <h4>— 或选择示例BP进行演示 —</h4>
       <div class="demo-cards">
@@ -350,7 +372,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
           <span class="sc-icon">📋</span>
           <span class="sc-name">基础框架评估</span>
         </div>
-        <div class="sc-score" id="scoreFramework">0<span>/25</span></div>
+        <div class="sc-score" id="scoreFramework">0<span>/30</span></div>
         <div class="sc-bar"><div class="sc-bar-fill" id="barFramework" style="width:0%;background:#ffd700;"></div></div>
         <div class="sc-desc" id="descFramework">结构完整性、逻辑闭环、叙事表达</div>
         <div class="sc-status" id="statusFramework">—</div>
@@ -370,7 +392,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
           <span class="sc-icon">💰</span>
           <span class="sc-name">资本逻辑校验</span>
         </div>
-        <div class="sc-score" id="scoreCapital">0<span>/25</span></div>
+        <div class="sc-score" id="scoreCapital">0<span>/20</span></div>
         <div class="sc-bar"><div class="sc-bar-fill" id="barCapital" style="width:0%;background:#4aa8ff;"></div></div>
         <div class="sc-desc" id="descCapital">估值合理性、融资与稀释、资金使用</div>
         <div class="sc-status" id="statusCapital">—</div>
@@ -487,10 +509,12 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 </div>
 
 <script src="assets/common.js"></script>
+<script src="assets/bp-engine.js"></script>
 <script>
 // ============ 全局状态 ============
 let currentDemo = 'demo1';
 let analysisTimer = null;
+let dynamicResult = null;   // 粘贴文本分析结果（非空时优先使用）
 
 // HTML 转义（优先使用 common.js 提供的实现，兜底本地实现）
 const ESC_MAP = { '&': '\u0026amp;', '<': '\u0026lt;', '>': '\u0026gt;', '"': '\u0026quot;', "'": '\u0026#39;' };
@@ -707,6 +731,63 @@ function handleUploadClick() {
   startDemo('demo1');
 }
 
+// ============ 粘贴文本分析 ============
+function analyzePastedText() {
+  const input = document.getElementById('bpTextInput');
+  const text = (input.value || '').trim();
+  if (text.length < 100) {
+    alert('请输入至少 100 字的 BP 文本，以便进行有效诊断。');
+    input.focus();
+    return;
+  }
+  if (!window.BPEngine) {
+    alert('分析引擎未加载，请刷新页面后重试。');
+    return;
+  }
+  // 调用引擎进行真实分析
+  const result = window.BPEngine.analyze(text);
+  dynamicResult = buildDynamicDemo(result, text);
+  currentDemo = 'dynamic';
+  document.getElementById('analyzingFile').textContent = '正在解析：粘贴文本（' + text.length + ' 字）';
+  showPage('page-analyzing');
+  updateSteps(2);
+  runAnalysis();
+}
+
+// 将引擎分析结果转换为 Demo 渲染所需的数据结构
+function buildDynamicDemo(result, text) {
+  const s = result.scores;
+  const statusOf = (score, max) => {
+    const r = score / max;
+    return r >= 0.85 ? '优秀' : r >= 0.7 ? '良好' : r >= 0.5 ? '需关注' : '待改进';
+  };
+  const descOf = (score, max, good, mid, bad) => {
+    const r = score / max;
+    return r >= 0.85 ? good : r >= 0.6 ? mid : bad;
+  };
+  return {
+    title: '粘贴文本 · 智能诊断',
+    file: '粘贴文本（' + text.length + ' 字）',
+    scores: s,
+    total: result.total,
+    grade: result.grade,
+    gradeText: result.gradeText,
+    frameworkStatus: statusOf(s.framework, 30),
+    pipelineStatus: statusOf(s.pipeline, 30),
+    capitalStatus: statusOf(s.capital, 20),
+    riskStatus: statusOf(s.risk, 20),
+    frameworkDesc: descOf(s.framework, 30, '结构完整，逻辑闭环清晰', '结构基本完整，部分章节待完善', '结构缺失较多，需系统补充'),
+    pipelineDesc: descOf(s.pipeline, 30, '管线竞争力强，临床数据扎实', '管线信息基本完整，深度待加强', '管线与临床数据严重不足'),
+    capitalDesc: descOf(s.capital, 20, '估值与融资依据充分', '融资信息基本完整，估值依据待补充', '估值与融资依据严重缺失'),
+    riskDesc: descOf(s.risk, 20, '风险披露充分，控制良好', '风险披露基本完整，部分待补充', '风险披露不足，需重点关注'),
+    risks: result.risks,
+    frameworkReport: result.reports.framework,
+    pipelineReport: result.reports.pipeline,
+    capitalReport: result.reports.capital,
+    suggestions: result.suggestions
+  };
+}
+
 // ============ 启动Demo ============
 function startDemo(demoId) {
   currentDemo = demoId;
@@ -766,7 +847,8 @@ function runAnalysis() {
 
 // ============ 显示结果 ============
 function showResult() {
-  const demo = DEMO_DATA[currentDemo];
+  // 粘贴文本分析结果优先；否则使用示例数据
+  const demo = (currentDemo === 'dynamic' && dynamicResult) ? dynamicResult : DEMO_DATA[currentDemo];
   const s = demo.scores;
 
   // 更新头部
@@ -776,10 +858,10 @@ function showResult() {
   gradeEl.textContent = demo.gradeText;
   gradeEl.className = 'grade grade-' + demo.grade.toLowerCase();
 
-  // 更新四维评分
-  updateScoreCard('Framework', s.framework, 25, demo.frameworkStatus, demo.frameworkDesc);
+  // 更新四维评分（满分与官方 E3 模型一致：A30/B30/C20/D20）
+  updateScoreCard('Framework', s.framework, 30, demo.frameworkStatus, demo.frameworkDesc);
   updateScoreCard('Pipeline', s.pipeline, 30, demo.pipelineStatus, demo.pipelineDesc);
-  updateScoreCard('Capital', s.capital, 25, demo.capitalStatus, demo.capitalDesc);
+  updateScoreCard('Capital', s.capital, 20, demo.capitalStatus, demo.capitalDesc);
   updateScoreCard('Risk', s.risk, 20, demo.riskStatus, demo.riskDesc);
 
   // 渲染风险列表
@@ -803,9 +885,9 @@ function showResult() {
 
   // 动画延迟填充进度条
   setTimeout(() => {
-    document.getElementById('barFramework').style.width = (s.framework / 25 * 100) + '%';
+    document.getElementById('barFramework').style.width = (s.framework / 30 * 100) + '%';
     document.getElementById('barPipeline').style.width = (s.pipeline / 30 * 100) + '%';
-    document.getElementById('barCapital').style.width = (s.capital / 25 * 100) + '%';
+    document.getElementById('barCapital').style.width = (s.capital / 20 * 100) + '%';
     document.getElementById('barRisk').style.width = (s.risk / 20 * 100) + '%';
   }, 100);
 }
@@ -869,7 +951,7 @@ function drawRadar(scores) {
 
   // 网格
   const labels = ['基础框架', '管线诊断', '资本逻辑', '风险控制'];
-  const maxValues = [25, 30, 25, 20];
+  const maxValues = [30, 30, 20, 20];
   const values = [scores.framework, scores.pipeline, scores.capital, scores.risk];
 
   // 绘制网格
@@ -953,9 +1035,9 @@ function drawBenchmark(scores) {
   ctx.clearRect(0, 0, w, h);
 
   const labels = ['基础框架', '管线诊断', '资本逻辑', '风险控制'];
-  const maxValues = [25, 30, 25, 20];
+  const maxValues = [30, 30, 20, 20];
   const values = [scores.framework, scores.pipeline, scores.capital, scores.risk];
-  const benchmark = [18, 20, 17, 14]; // 行业基准
+  const benchmark = [21, 21, 14, 14]; // 行业基准（按满分比例折算）
 
   // 网格
   for (let ring = 1; ring <= 4; ring++) {
@@ -1060,6 +1142,17 @@ function resetDemo() {
 // ============ 初始化 ============
 document.addEventListener('DOMContentLoaded', () => {
   updateSteps(1);
+
+  // 粘贴文本字数统计
+  const ta = document.getElementById('bpTextInput');
+  const hint = document.getElementById('pasteHint');
+  if (ta && hint) {
+    ta.addEventListener('input', () => {
+      const n = ta.value.trim().length;
+      hint.textContent = '已输入 ' + n + ' 字' + (n >= 500 ? '（可开始诊断）' : '（建议 ≥ 500 字）');
+      hint.classList.toggle('ok', n >= 500);
+    });
+  }
 });
 </script>
 </body>
