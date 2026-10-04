@@ -10,7 +10,8 @@ const BPEngine = global.window.BPEngine;
 const cases = [
   { name: 'BTK抑制剂示例', file: 'BTK抑制剂_商业计划书_示例.txt' },
   { name: '波睿达生物(CAR-T C轮)', file: 'BioTech案例/_extracted/波睿达生物.txt' },
-  { name: '微影生物(器械·投资分析)', file: 'BioTech案例/_extracted/微影生物.txt' }
+  { name: '微影生物(器械·投资分析)', file: 'BioTech案例/_extracted/微影生物.txt' },
+  { name: '华道生物(CAR-T pre-IPO)', file: 'BioTech案例/_extracted/华道生物.txt' }
 ];
 
 cases.forEach(c => {
