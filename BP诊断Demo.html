@@ -292,9 +292,30 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
             <span class="dc-tag">已获批上市</span>
           </div>
         </div>
+        <div class="demo-card" onclick="startDemo('demo5')">
+          <div class="dc-icon">❄️</div>
+          <div class="dc-title">示例E：菲瑞药业 · 冻干闪释制剂平台</div>
+          <div class="dc-desc">某制剂平台企业BP，自主研发冻干闪释剂型（崩解<3秒），覆盖儿童/老年/精神类用药，A轮已完成，B轮估值8亿元。</div>
+          <div class="dc-tags">
+            <span class="dc-tag">制剂平台</span>
+            <span class="dc-tag">注册申报</span>
+            <span class="dc-tag">B轮估值8亿</span>
+          </div>
+        </div>
+        <div class="demo-card" onclick="startDemo('demo6')">
+          <div class="dc-icon">🧠</div>
+          <div class="dc-title">示例F：安杰莱科技 · 脑机接口+AI机器人</div>
+          <div class="dc-desc">某脑机接口企业BP，无创脑机+AI机器人融合，7款产品获NMPA注册证，21天RCT有效率96.55%，拟2028年IPO。</div>
+          <div class="dc-tags">
+            <span class="dc-tag">脑机接口</span>
+            <span class="dc-tag">已获证</span>
+            <span class="dc-tag">拟2028 IPO</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
+
 
   <!-- ===== 页面2：AI诊断中 ===== -->
   <div class="page" id="page-analyzing">
@@ -710,8 +731,95 @@ const DEMO_DATA = {
       '补充BD授权合作（License-out）策略与海外市场拓展路径',
       '补充18个月现金跑道测算与融资断档应急预案'
     ]
+  },
+  demo5: {
+    title: '示例E：菲瑞药业 · 冻干闪释制剂平台',
+    file: '菲瑞药业_商业计划书_0513.pdf',
+    scores: { framework: 30, pipeline: 14, capital: 17, risk: 9 },
+    total: 70,
+    grade: 'B',
+    gradeText: 'B级 · 良好',
+    frameworkStatus: '优秀',
+    pipelineStatus: '需关注',
+    capitalStatus: '良好',
+    riskStatus: '需关注',
+    frameworkDesc: '公司、市场、商业模式与战略结构完整',
+    pipelineDesc: '平台型剂型升级，缺少临床疗效数据支撑',
+    capitalDesc: '融资轮次与资金用途清晰，估值依据待补充',
+    riskDesc: '存在夸大表述与知识产权披露不足风险',
+    risks: [
+      { level: 'mid', title: '合规风险：夸大性表述', desc: 'BP中出现"世界唯二、中国唯一""国内唯一""全球唯一"等夸大性表述，若缺乏权威认证或第三方数据支撑，可能引发合规质疑。', loc: '全文检索' },
+      { level: 'mid', title: '知识产权风险：缺少FTO分析', desc: 'BP披露已获21项专利，但未提供完整的FTO（自由实施）分析报告或专利布局图，冻干闪释剂型赛道存在潜在知识产权纠纷风险。', loc: '知识产权章节' },
+      { level: 'mid', title: '临床数据不足', desc: 'BP以剂型升级（2类改良新药/4类仿制）为主，缺少ORR/PFS/OS等关键疗效指标或生物等效性（BE）数据，难以评估产品临床价值。', loc: '临床章节' }
+    ],
+    frameworkReport: [
+      { tag: 'good', title: '结构完整性', content: 'BP包含<b>公司概况、核心技术、市场分析、产品管线、商业模式、融资规划</b>等核心章节，结构完整。', suggestion: '建议补充关键里程碑时间表与风险因素章节。' },
+      { tag: 'good', title: '商业逻辑闭环', content: '从<b>剂型痛点→冻干闪释技术→平台化生产→自主品牌+OEM双通道→财务预测</b>的逻辑链条完整，且已有63家OEM签约（约5亿元）支撑。', suggestion: '建议补充自主品牌与OEM业务的收入占比与毛利结构。' },
+      { tag: 'good', title: '叙事流畅度', content: '叙事逻辑清晰，技术对比（崩解时限、溶出速率、依从性）数据详实，专业性强。' }
+    ],
+    pipelineReport: [
+      { tag: 'warn', title: '临床数据解析', content: '核心为<b>冻干闪释剂型平台</b>，管线以2类改良新药与4类仿制药为主，缺少关键疗效指标或BE数据。', suggestion: '建议补充代表性产品的生物等效性（BE）数据与临床优势证据。' },
+      { tag: 'good', title: '技术差异化', content: '冻干闪释技术具备<b>崩解<3秒、溶出>90%、粒径<10微米、辅料药物比<1:1</b>等差异化优势，较美国产品成本下降近40倍，三大壁垒（配方专利、设备专利、冷冻曲线）清晰。', suggestion: '建议补充与国内外竞品的头对头性能对比数据。' },
+      { tag: 'warn', title: '专利壁垒', content: 'BP披露已获21项专利，但未提供完整的<b>FTO分析报告与专利布局图</b>。', suggestion: '建议补充FTO分析报告、核心专利到期时间及专利布局图。' }
+    ],
+    capitalReport: [
+      { tag: 'warn', title: '估值合理性', content: 'BP披露B轮估值8亿元，但未提供<b>rNPV/DCF估值模型</b>或可比交易对标依据，估值合理性有待验证。', suggestion: '建议补充估值模型测算过程，并对标同类制剂平台企业。' },
+      { tag: 'good', title: '融资金额与稀释', content: '融资历程清晰（A轮4000万、A+轮5000万、B轮估值8亿），资金用途明确（新药申报40%、产线建设40%、营销20%）。', suggestion: '建议补充投前/投后估值与稀释比例明细。' },
+      { tag: 'good', title: '资金使用计划', content: '资金使用计划与<b>新药申报、产线建设、营销投入</b>目标匹配，分配比例合理。' }
+    ],
+    suggestions: [
+      '补充FTO分析报告与专利布局图，降低知识产权风险',
+      '补充关键疗效数据（ORR、PFS、OS）与安全性数据',
+      '删除或修改绝对化/承诺性表述，确保合规宣传',
+      '补充rNPV/DCF估值模型测算过程，提供可比交易对标数据',
+      '补充代表性产品的生物等效性（BE）数据与临床优势证据'
+    ]
+  },
+  demo6: {
+    title: '示例F：安杰莱科技 · 脑机接口+AI机器人',
+    file: '安杰莱科技_BP_2026.pdf',
+    scores: { framework: 30, pipeline: 23, capital: 11, risk: 13 },
+    total: 77,
+    grade: 'B',
+    gradeText: 'B级 · 良好',
+    frameworkStatus: '优秀',
+    pipelineStatus: '良好',
+    capitalStatus: '需关注',
+    riskStatus: '良好',
+    frameworkDesc: '战略、市场、团队与竞争格局阐述完整',
+    pipelineDesc: '7款获证产品+脑机接口管线，临床数据扎实',
+    capitalDesc: '融资里程碑清晰，估值依据待补充',
+    riskDesc: '存在夸大表述与估值依据缺失风险',
+    risks: [
+      { level: 'mid', title: '合规风险：夸大性表述', desc: 'BP中出现"全球唯一""国内独家""性能第一""全球首创"等夸大性表述，若缺乏权威认证或第三方数据支撑，可能引发合规质疑。', loc: '全文检索' },
+      { level: 'mid', title: '估值依据缺失', desc: 'BP未提供rNPV/DCF估值模型或可比交易依据，B轮&B+轮估值合理性无法验证。', loc: '融资章节' },
+      { level: 'mid', title: '知识产权风险：缺少FTO分析', desc: 'BP披露200+项知识产权，但未提供完整的FTO（自由实施）分析报告或专利布局图，脑机接口赛道专利密集，存在潜在纠纷风险。', loc: '知识产权章节' }
+    ],
+    frameworkReport: [
+      { tag: 'good', title: '结构完整性', content: 'BP包含<b>战略总纲、核心优势、市场规模、技术路线、产品矩阵、临床循证、竞争格局、团队、融资规划</b>等核心章节，结构完整。', suggestion: '建议补充风险因素章节与关键里程碑时间表。' },
+      { tag: 'good', title: '商业逻辑闭环', content: '从<b>神经康复刚需→无创脑机+AI机器人技术→7款获证产品商业化→三级跃迁战略→财务预测</b>的逻辑链条完整，且已有200+医院装机支撑。', suggestion: '建议补充单台设备售价、装机量与收入模型明细。' },
+      { tag: 'good', title: '叙事流畅度', content: '叙事逻辑清晰，临床数据（96.55% vs 31.03%）、竞争对比（vs BrainCo/Neuralink）支撑充分，专业性强。' }
+    ],
+    pipelineReport: [
+      { tag: 'good', title: '临床数据解析', content: '基于<b>21天多中心随机对照试验</b>（92名脑卒中偏瘫患者），实验组康复有效率96.55%，对照组31.03%，无一例严重不良事件（SAE），临床证据扎实。', suggestion: '建议补充长期随访数据与更大样本量的注册性临床结果。' },
+      { tag: 'good', title: '技术差异化', content: '具备<b>无创脑机接口+AI算法+机器人深度融合</b>架构，运动意图解码率>95%，首创"脑-机-体"闭环控制，7款产品获NMPA二类注册证。', suggestion: '建议补充与强脑科技、Neuralink的头对头性能对比数据。' },
+      { tag: 'warn', title: '专利壁垒', content: 'BP披露200+项知识产权，但未提供完整的<b>FTO分析报告与专利布局图</b>。', suggestion: '建议补充FTO分析报告、核心专利到期时间及专利布局图。' }
+    ],
+    capitalReport: [
+      { tag: 'warn', title: '估值合理性', content: 'BP未提供<b>rNPV/DCF估值模型</b>或可比交易对标依据，B轮&B+轮估值合理性有待验证。', suggestion: '建议补充估值模型测算过程，并对标同类脑机接口/康复机器人企业。' },
+      { tag: 'good', title: '融资金额与稀释', content: '融资里程碑清晰（Pre-A轮2022.04、A&A+轮2024.08、B轮&B+轮2026、IPO 2028），资金用途明确（研发40%、市场30%、产能20%、团队10%）。', suggestion: '建议补充投前/投后估值与稀释比例明细。' },
+      { tag: 'good', title: '资金使用计划', content: '资金使用计划与<b>脑机接口研发、渠道建设、产能扩张、人才引进</b>目标匹配，分配比例合理。' }
+    ],
+    suggestions: [
+      '补充rNPV/DCF估值模型测算过程，提供可比交易对标数据，增强估值说服力',
+      '补充FTO分析报告与专利布局图，降低知识产权风险',
+      '删除或修改绝对化/承诺性表述，确保合规宣传',
+      '补充单台设备售价、装机量与收入模型明细',
+      '补充长期随访数据与更大样本量的注册性临床结果'
+    ]
   }
 };
+
 
 // ============ 页面切换 ============
 function showPage(pageId) {

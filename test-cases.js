@@ -12,8 +12,11 @@ const cases = [
   { name: '波睿达生物(CAR-T C轮)', file: 'BioTech案例/_extracted/波睿达生物.txt' },
   { name: '微影生物(器械·投资分析)', file: 'BioTech案例/_extracted/微影生物.txt' },
   { name: '华道生物(CAR-T pre-IPO)', file: 'BioTech案例/_extracted/华道生物.txt' },
-  { name: '诺洁贝生物(基因治疗 Pre-IPO)', file: 'BioTech案例/_extracted/诺洁贝生物.txt' }
+  { name: '诺洁贝生物(基因治疗 Pre-IPO)', file: 'BioTech案例/_extracted/诺洁贝生物.txt' },
+  { name: '菲瑞药业(冻干闪释制剂平台)', file: 'BioTech案例/_extracted/菲瑞药业.txt' },
+  { name: '安杰莱科技(脑机接口+AI机器人)', file: 'BioTech案例/_extracted/安杰莱科技.txt' }
 ];
+
 
 cases.forEach(c => {
   const p = path.join(__dirname, c.file);
