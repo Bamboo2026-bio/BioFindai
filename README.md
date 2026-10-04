@@ -76,6 +76,11 @@ BioFin 智投引擎是一个专为生物医药行业设计的 **BP（商业计�
 | `BP诊断Demo.html` | 交互式 Demo 演示页面（主入口） |
 | `BP诊断打分模块_功能与系统设计清单.html` | 平台功能与系统设计总览 |
 | `模块1-27_*.html` | 各功能模块的详细设计文档 |
+| `assets/common.js` | 公共脚本：模块注册表、跳转、HTML 转义（XSS 防护） |
+| `assets/common.css` | 公共样式 |
+| `assets/bp-engine.js` | BP 分析引擎：字段抽取 + E3 四维评分（A30/B30/C20/D20） |
+| `test-cases.js` | 引擎回归测试脚本（Node 运行，覆盖 5 个真实案例） |
+| `BioTech案例/_extracted/*.txt` | 真实 BP 案例文本（用于引擎测试与演示） |
 
 ## 🚀 快速开始
 
@@ -85,6 +90,18 @@ BioFin 智投引擎是一个专为生物医药行业设计的 **BP（商业计�
 # 本地预览
 open BP诊断Demo.html
 ```
+
+## 🧪 引擎回归测试
+
+`assets/bp-engine.js` 为纯前端规则引擎，可通过 Node 直接运行回归测试，
+验证字段抽取（公司名/融资额/估值/临床阶段/靶点）与四维评分的正确性：
+
+```bash
+node test-cases.js
+```
+
+测试覆盖 5 个真实案例：诺诚健华（BTK）、波睿达生物（CAR-T）、
+微影生物（医疗器械）、华道生物（CAR-T）、诺洁贝生物（基因治疗）。
 
 ## 📄 License
 
