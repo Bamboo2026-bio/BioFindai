@@ -66,6 +66,10 @@
 
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
+  // 非融资语境关键词：市场规模、财务预测、成本等，避免误取
+  var NON_FINANCING_CTX = /销售额|销售收入|销售|收入|营收|费用|成本|亏损|利润|净利润|市值|价格|定价|治疗|支付|医保|产能|产量|单价|市场规模|市场空间|万亿|千亿|亿美元|研发投入|预算|估值|检测|订单|合同额/;
+
+
   // 从文本中提取融资相关金额（优先匹配"融资/募资/拟融资…X亿元"语境）
   function extractAmount(text, unitWords) {
     // 优先：美元缩写格式（如"$250M""$32M"），因其更明确指向融资轮次
@@ -75,6 +79,39 @@
     var ctxRe = /(?:融资|募资|拟融资|募集|本轮|投资额|融资金额|拟)[^。\n]{0,15}?([0-9][0-9,\.]*)\s*(?:[-~至]\s*[0-9][0-9,\.]*\s*)?(亿元|万元|亿|万)/;
     var cm = text.match(ctxRe);
     if (cm) return cm[1].replace(/,/g, '') + cm[2];
+    // 跨行/跨图表：PPT 提取后"B轮&B+轮融资需求"与"1.5亿元人民币"常被图表数据隔开
+    // 策略：在融资关键词后 200 字符窗口内，取第一个"干净"的金额（排除市场规模/财务预测）
+    var kwRe = /(?:融资需求|融资金额|拟融资|本轮融资|融资规模|募集资金|融资额|融资计划|B轮|A轮|C轮|Pre-IPO|天使轮)/g, km;
+    while ((km = kwRe.exec(text)) !== null) {
+      // 窗口扩大到 400 字符：PPT 提取后图表数据（坐标轴/图例）可能占据大量篇幅
+      var win = text.slice(km.index, km.index + 400);
+      // 逐行扫描：跳过图表中的纯数字行（如"-20,000""100,000"），只取带单位且语境干净的金额
+      var lines = win.split('\n');
+      var fallback = null;
+      for (var li = 0; li < lines.length; li++) {
+        var line = lines[li];
+        // 跳过 PPT 图表坐标轴/数据标签行：数字被空格拆散（如"8 3 . 0 2亿""1 0 ～20 亿"）
+        if (/[0-9]\s+[0-9]/.test(line)) continue;
+        var am = line.match(/([0-9][0-9,\.]*)\s*(亿元|万元|亿|万)/);
+        if (am) {
+          // 语境判断只看"当前行"：PPT 图表中"销售收入、研发投入、净利润"常是图例，
+          // 与下一行的融资金额并无语义关联，不能跨行排除
+          if (!NON_FINANCING_CTX.test(line)) {
+            var val = am[1].replace(/,/g, '') + am[2];
+            // 最高优先级：资金用途行（如"900万元用于将研发管线推进IND"），这是融资总额的拆分
+            if (/用于|用途|投入|分配/.test(line)) return val;
+            // 次优先：带"人民币"或"元"的明确金额（如"1.5亿元人民币"）
+            if (/人民币|元/.test(line)) return val;
+            if (!fallback) fallback = val;
+          }
+        }
+      }
+      if (fallback) return fallback;
+
+
+    }
+
+
     // 美元融资（如"累计募集资金> 8,000万美元"）
     var usd = text.match(/(?:融资|募集|累计募集)[^。\n]{0,15}?([0-9][0-9,\.]*)\s*(?:万)?美元/);
     if (usd) return usd[1].replace(/,/g, '') + '万美元';
@@ -88,38 +125,118 @@
       while ((m = re.exec(text)) !== null) {
         var start = Math.max(0, m.index - 15);
         var ctx = text.slice(start, m.index);
-        if (/销售额|收入|营收|费用|成本|亏损|利润|市值|价格|定价|治疗|支付|医保|产能|产量|成本|单价/.test(ctx)) continue;
+        if (NON_FINANCING_CTX.test(ctx)) continue;
         return m[1].replace(/,/g, '') + unitWords[i];
       }
     }
     return null;
   }
 
+
+  // 判断某公司名出现位置是否属于"干扰语境"（创始人履历/前雇主/奖项/客户/竞品）
+  // 典型干扰："任新绎健康管理有限公司（新奥集团）CEO""连续7年荣获美国制药界…奖"
+  function isNoiseCompanyContext(text, index, name) {
+    var before = text.slice(Math.max(0, index - 40), index);
+    var after = text.slice(index + name.length, index + name.length + 20);
+    // 前文：任职/履历/奖项/客户/竞品/合作方/投资方
+    if (/(?:任|曾任|就职于|就职|供职|加入|毕业于|创始人|联合创始人|CEO|CTO|CSO|CMO|COO|董事长|总经理|总监|合伙人|顾问|团队|履历|经历|背景|曾于|曾在|来自|原)[^。\n]{0,12}$/.test(before)) return true;
+    if (/(?:荣获|获得|获评|入选|评为|授予|颁发|奖|称号|认证|客户|供应商|合作方|竞品|对标|收购|并购|投资了|参股|子公司|母公司|集团旗下)/.test(before)) return true;
+    // 投资方/股东名单（如"B轮 1.0亿：任大龙、博爱新开源医疗科技集团股份有限公司"）
+    if (/(?:轮|融资|投资方|股东|领投|跟投|出资|认购)[^。\n]{0,40}$/.test(before)) return true;
+    if (/[、，,：:]\s*$/.test(before) && /(?:轮|融资|投资方|股东|领投|跟投)/.test(text.slice(Math.max(0, index - 120), index))) return true;
+    // 专家头衔/政府机构（如"国家科技部重点专项首席专家"）
+    if (/(?:国家|省|市|部|局|委|院|所|中心|学会|协会|大学|学院)[^。\n]{0,6}$/.test(before)) return true;
+    // 竞品对比语境（如"对比维度：安杰莱科技、强脑科技（BrainCo）、Neuralink"）
+    if (/(?:对比|比较|竞品|对标|竞争格局|vs\.?|VS|相比|相较|优于|区别于)[^。\n]{0,30}$/.test(before)) return true;
+    if (/[、，,]\s*$/.test(before) && /(?:对比|比较|竞品|对标|竞争格局|vs\.?|VS)/.test(text.slice(Math.max(0, index - 80), index))) return true;
+    // 竞品对比表的行首条目（如"强脑科技：非侵入式脑机接口为主…"）
+    // 判定：位于行首 + 后接冒号 + 该行是"XX：描述"的对比句式
+    var lineStart = text.lastIndexOf('\n', index - 1) + 1;
+    var isLineHead = text.slice(lineStart, index).trim() === '';
+    if (isLineHead && /^\s*[：:]/.test(after)) {
+      // 若同一段落中存在多个"XX：描述"行，则视为对比表
+      var para = text.slice(Math.max(0, index - 300), index + 300);
+      var colonLines = para.split('\n').filter(function (l) { return /^[\u4e00-\u9fa5A-Za-z]{2,12}\s*[：:]/.test(l.trim()); });
+      if (colonLines.length >= 2) return true;
+    }
+
+
+    // 后文：职务/奖项/客户关系
+    if (/^\s*(?:CEO|CTO|CSO|CMO|COO|董事长|总经理|总监|合伙人|顾问|创始人|总裁|首席|（新奥|\(新奥)/.test(after)) return true;
+    if (/^\s*(?:奖|称号|认证|客户|供应商|合作|竞品|对标|部|局|委|院|所|中心|学会|协会|大学|学院)/.test(after)) return true;
+    return false;
+  }
+
+
   // 抽取公司名称：优先"公司全称/公司名称"语境，其次带"有限公司"后缀
   // 关键：BP 标题/开头通常就是公司名，应优先在文本前部查找，避免命中创始人履历中的前雇主
   function extractCompany(text) {
-    var m = text.match(/(?:公司全称|公司名称|企业名称)[：:]\s*([\u4e00-\u9fa5A-Za-z0-9（）()]{4,30})/);
-    if (m) return m[1].replace(/[（(].*?[)）]/g, '').trim();
+    // 显式"公司名称："字段：保留括号内的英文名（如"诺诚健华医药有限公司（InnoCare Pharma Limited）"）
+    // 只取同一行内的内容（\n 会截断），避免把下一行"英文名称：…"吞进来
+    var m = text.match(/(?:公司全称|公司名称|企业名称)[：:][ \t]*([^\n]{4,60})/);
+    if (m) {
+      var full = m[1].trim();
+
+      // 若括号内是英文名，保留中文主体 + 英文名；否则去掉括号补充说明
+      var pm = full.match(/^([\u4e00-\u9fa5]{2,20}(?:有限公司|股份有限公司))\s*[（(]([A-Za-z][A-Za-z0-9\s&.,\-]{2,40})[)）]/);
+      if (pm) return pm[1] + '（' + pm[2].trim() + '）';
+      return full.replace(/[（(].*?[)）]/g, '').trim();
+    }
+
     // 公司名匹配模式（按优先级）：含括号地名全称 > 普通全称
     var patterns = [
       /([\u4e00-\u9fa5]{2,10}[（(][\u4e00-\u9fa5]{2,6}[)）][\u4e00-\u9fa5]{2,10}(?:有限公司|股份有限公司))/,
       /([\u4e00-\u9fa5]{2,12}(?:生物|医药|医疗|制药|科技|健康)[\u4e00-\u9fa5]{0,8}(?:有限公司|股份有限公司))/
     ];
+    // 清理公司名前缀：兼容"更名为/改名为/变更为"被换行拆开的情况（如"更\n名为华道…"）
+    function stripRenamePrefix(s) {
+      return s.replace(/^[\s\S]*?(?:更名为|改名为|变更为|名为)/, '').trim();
+    }
     // 先在文本前 300 字符（标题区）中查找，命中即返回
     var head = text.slice(0, 300);
     for (var i = 0; i < patterns.length; i++) {
       var hm = head.match(patterns[i]);
-      if (hm) return hm[1].replace(/^.*?(?:更名为|改名为|变更为)/, '');
+      if (hm) return stripRenamePrefix(hm[1]);
     }
-    // 再在全文查找
+    // 再在全文查找：跳过履历/奖项/客户等干扰语境，取第一个"干净"的命中
     for (var j = 0; j < patterns.length; j++) {
-      var fm = text.match(patterns[j]);
-      if (fm) return fm[1].replace(/^.*?(?:更名为|改名为|变更为)/, '');
+      var re = new RegExp(patterns[j].source, 'g'), fm;
+      while ((fm = re.exec(text)) !== null) {
+        if (isNoiseCompanyContext(text, fm.index, fm[1])) continue;
+        return stripRenamePrefix(fm[1]);
+      }
     }
-    // 兜底：标题行中的"XX生物/医药"
-    m = text.match(/([\u4e00-\u9fa5]{2,10}(?:生物|医药|医疗|制药|科技|健康))/);
-    return m ? m[1] : '未识别';
+
+    // 兜底1：品牌名频次策略——BP 中反复出现的"XX药业/XX生物/XX科技"通常就是公司简称
+    // （如"福沃药业"在封面/页眉/正文反复出现，而全称可能未出现）
+    var brandRe = /([\u4e00-\u9fa5]{2,8}(?:药业|生物|医药|医疗|制药|科技|健康|诊断|基因))/g, bm;
+    var freq = {}, firstIdx = {};
+    while ((bm = brandRe.exec(text)) !== null) {
+      var name = bm[1];
+      // 过滤普通名词/泛称，避免"结构生物学""健康管理""生物医药"等被误认为公司名
+      if (/^(?:结构生物|分子生物|细胞生物|系统生物|合成生物|生物医药|生物技术|生物科技|生物制品|健康管理|健康科技|医疗科技|医药科技|精准医疗|智慧医疗|医疗器械|医疗服务|科技创新|科技有限|生物工程|基因治疗|基因检测|细胞治疗|免疫治疗|诊断试剂|医疗健康|大健康|健康产业|医药行业|生物制药|创新药|新药研发|药物研发|临床研究|医学研究|生命科学|生物医学|再生医学|转化医学|精准医学|数字医疗|互联网医疗|人工智能|智能科技|新材料|新能源)$/.test(name)) continue;
+      if (isNoiseCompanyContext(text, bm.index, name)) continue;
+      freq[name] = (freq[name] || 0) + 1;
+      if (firstIdx[name] === undefined) firstIdx[name] = bm.index;
+    }
+    var bestName = null, bestScore = 0;
+    Object.keys(freq).forEach(function (n) {
+      // 频次优先，同频次取更靠前的
+      var score = freq[n] * 1000 - firstIdx[n] / 1000;
+      if (score > bestScore) { bestScore = score; bestName = n; }
+    });
+    if (bestName && freq[bestName] >= 2) return bestName;
+    // 兜底2：标题行中的"XX生物/医药"（同样排除干扰语境）
+    var re2 = /([\u4e00-\u9fa5]{2,10}(?:生物|医药|医疗|制药|科技|健康))/g, m2;
+    while ((m2 = re2.exec(text)) !== null) {
+      if (isNoiseCompanyContext(text, m2.index, m2[1])) continue;
+      if (/^(?:结构生物|分子生物|细胞生物|系统生物|合成生物|生物医药|生物技术|生物科技|健康管理|健康科技|医疗科技|医药科技|精准医疗|智慧医疗|医疗器械|医疗服务|基因治疗|基因检测|细胞治疗|免疫治疗|诊断试剂|医疗健康|大健康|健康产业|医药行业|生物制药|创新药|新药研发|药物研发|临床研究|医学研究|生命科学|生物医学|再生医学|转化医学|精准医学|数字医疗|互联网医疗|人工智能|智能科技)$/.test(m2[1])) continue;
+      return m2[1];
+    }
+    return '未识别';
   }
+
+
 
   // 抽取估值：优先"投前/投后估值"语境，排除 rNPV/管线估值等干扰
   function extractValuation(text) {
@@ -130,15 +247,20 @@
     // 其次：C轮/本轮估值
     m = text.match(/(?:本轮|C轮|B轮|A轮|Pre-IPO)[^。\n]{0,10}?估值[^。\n]{0,10}?([0-9][0-9,\.]*\s*[亿万]元)/);
     if (m) return m[1].replace(/\s/g, '');
-    // 兜底：估值/市值，但排除 rNPV/管线/期权 语境
-    var re = /(?:估值|市值)[^。\n]{0,20}?([0-9][0-9,\.]*\s*[亿万]元)/g, mm;
-    while ((mm = re.exec(text)) !== null) {
-      var ctx = text.slice(Math.max(0, mm.index - 15), mm.index);
-      if (/rNPV|管线|期权|加总|资产/.test(ctx)) continue;
-      return mm[1].replace(/\s/g, '');
+    // 跨行/跨图表：PPT 提取后"估值"与金额常被图表数据隔开，在 120 字符窗口内查找
+    var kwRe = /(?:投前估值|投后估值|本轮估值|估值|市值)/g, km;
+    while ((km = kwRe.exec(text)) !== null) {
+      var win = text.slice(km.index, km.index + 120);
+      var vm = win.match(/([0-9][0-9,\.]*)\s*(亿元|万元|亿|万)/);
+      if (!vm) continue;
+      var pre = win.slice(0, vm.index);
+      // 排除 rNPV/管线/期权/市场规模/收入 等非企业估值语境
+      if (/rNPV|管线|期权|加总|资产|市场规模|市场空间|收入|营收|销售额|万亿|千亿/.test(pre)) continue;
+      return vm[1].replace(/,/g, '') + vm[2];
     }
     return null;
   }
+
 
   // 抽取临床阶段：识别"最高"临床阶段（已上市 > III期 > II期 > I期 > IND > 临床前）
   // 注意：需排除"已上市8款产品""已上市竞品"等描述竞品/行业的干扰语境
@@ -160,6 +282,9 @@
       // 医疗器械：取得注册证/获证（如"NMPA二类医疗器械注册证""7款获证""全线产品均已获得注册证"）
       // 注意：必须明确为"注册证/获证"，不能是"批件/资格/孤儿药认证"等临床批文或药品资格
       { re: /(?:获得|取得|已获|均已获|获批)[^。\n]{0,12}?注册证|(?:NMPA|FDA|CE|MDA)[^。\n]{0,6}?注册证|[0-9]+\s*款[^。\n]{0,6}?获证|获证[^。\n]{0,6}?产品/, name: '已获证' },
+      // IVD/体外诊断：一类备案证、二类/三类注册证（如"获准一类备案证""获准二类注册证"）
+      { re: /(?:获准|获得|取得|已获)[^。\n]{0,8}?(?:一类|二类|三类)[^。\n]{0,6}?(?:备案证|注册证)|(?:一类|二类|三类)(?:医疗器械)?(?:备案证|注册证)/, name: '已获证' },
+
 
 
       // NDA：要求"处于NDA阶段/正在NDA审评/NDA已受理"等明确当前状态的表述
@@ -180,8 +305,19 @@
     for (var i = 0; i < STAGES.length; i++) {
       if (STAGES[i].re.test(cleaned)) return STAGES[i].name;
     }
+    // 非药械赛道识别：功能性食品/健康消费品/化工材料等，本身不存在临床阶段
+    // 避免笼统返回"未识别"造成误判（如"药食同源"食品、底涂剂材料、健康饮品）
+    var NON_PHARMA = [
+      { re: /药食同源|功能性食品|保健食品|膳食补充|食品生产许可|SC证|食品经营许可/, name: '非药械·食品' },
+      { re: /底涂剂|密封胶|聚合物|化工|材料|涂料|胶粘剂/, name: '非药械·材料' },
+      { re: /健康饮品|饮品|口服液|茶饮|营养品|康养/, name: '非药械·消费品' }
+    ];
+    for (var k = 0; k < NON_PHARMA.length; k++) {
+      if (NON_PHARMA[k].re.test(cleaned)) return NON_PHARMA[k].name;
+    }
     return '未识别';
   }
+
 
   // 抽取核心靶点：按出现频次排序，取最高频靶点
   function extractTarget(text) {
