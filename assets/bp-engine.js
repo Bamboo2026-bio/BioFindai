@@ -261,6 +261,33 @@
     return null;
   }
 
+  // 估值反推兜底：BP 未直接披露估值时，用"融资额 ÷ 出让股权比例"估算投后估值
+  // 例："本轮计划出让股权15%-20%，所筹资金…" + "融资5000万" → 5000万 ÷ 17.5% ≈ 2.9亿元
+  // 返回 { value: '2.9亿元', basis: '反推' } 或 null
+  function inferValuation(text, amount) {
+    if (!amount) return null;
+    // 解析融资额（仅支持人民币）
+    var am = String(amount).match(/^([0-9][0-9,\.]*)\s*(亿元|万元|亿|万)$/);
+    if (!am) return null;
+    var amt = parseFloat(am[1].replace(/,/g, ''));
+    if (!isFinite(amt) || amt <= 0) return null;
+    var amtYi = /亿/.test(am[2]) ? amt : amt / 10000; // 统一换算为"亿元"
+
+    // 匹配出让/稀释股权比例（支持区间"15%-20%""10~15%"）
+    var pm = text.match(/(?:出让|稀释|释放|转让|增发)[^。\n]{0,12}?([0-9]{1,2}(?:\.[0-9]+)?)\s*%\s*(?:[-~至]\s*([0-9]{1,2}(?:\.[0-9]+)?)\s*%)?/);
+    if (!pm) return null;
+    var lo = parseFloat(pm[1]);
+    var hi = pm[2] ? parseFloat(pm[2]) : lo;
+    if (!isFinite(lo) || lo <= 0 || lo > 60) return null;
+    var pct = (lo + hi) / 2 / 100; // 区间取中值
+    var val = amtYi / pct;
+    if (!isFinite(val) || val <= 0 || val > 1000) return null;
+    // 保留 1 位小数
+    var rounded = Math.round(val * 10) / 10;
+    return { value: rounded + '亿元', basis: '按融资额÷出让股权比例（' + lo + (hi !== lo ? '-' + hi : '') + '%）反推' };
+  }
+
+
 
   // 抽取临床阶段：识别"最高"临床阶段（已上市 > III期 > II期 > I期 > IND > 临床前）
   // 注意：需排除"已上市8款产品""已上市竞品"等描述竞品/行业的干扰语境
@@ -310,8 +337,10 @@
     var NON_PHARMA = [
       { re: /药食同源|功能性食品|保健食品|膳食补充|食品生产许可|SC证|食品经营许可/, name: '非药械·食品' },
       { re: /底涂剂|密封胶|聚合物|化工|材料|涂料|胶粘剂/, name: '非药械·材料' },
-      { re: /健康饮品|饮品|口服液|茶饮|营养品|康养/, name: '非药械·消费品' }
+      // 健康消费品：产品手册类文档（如"血管健康""主动健康管理""品牌口号""产品手册"）
+      { re: /健康饮品|饮品|口服液|茶饮|营养品|康养|产品手册|品牌口号|公司愿景|主动健康管理|健康管理新风向|天然植物|植物能量/, name: '非药械·消费品' }
     ];
+
     for (var k = 0; k < NON_PHARMA.length; k++) {
       if (NON_PHARMA[k].re.test(cleaned)) return NON_PHARMA[k].name;
     }
@@ -319,18 +348,52 @@
   }
 
 
+  // 靶点词典：按类别组织，便于维护与扩展
+  // 注意：匹配时统一做大小写不敏感 + 边界处理，避免 "CD3" 命中 "CD30"、"C3" 命中 "C30" 等误判
+  var TARGET_DICT = [
+    // 免疫检查点
+    'PD-1', 'PD-L1', 'PD-L2', 'CTLA-4', 'TIGIT', 'LAG-3', 'TIM-3', 'VISTA', 'B7-H3', 'B7-H4', '4-1BB', 'CD137', 'OX40', 'CD27', 'CD28', 'ICOS', 'NKG2A', 'KIR',
+    // 血液瘤 / 细胞治疗
+    'CD19', 'CD20', 'CD22', 'CD30', 'CD33', 'CD38', 'CD47', 'CD70', 'CD99', 'CD123', 'CD138', 'CD3', 'BCMA', 'GPRC5D', 'SLAMF7', 'CS1', 'FcRH5',
+    // 实体瘤
+    'HER2', 'EGFR', 'ALK', 'ROS1', 'RET', 'MET', 'c-Met', 'KRAS', 'BRAF', 'MEK', 'NTRK', 'TRK', 'FGFR', 'VEGFR', 'VEGF', 'TROP2', 'Nectin-4', 'CLDN18.2', 'Claudin18.2', 'MSLN', 'Mesothelin', 'GPC3', 'AFP', 'PSMA', 'FAP', 'CA9', 'GPR87', 'MUC1', 'MUC16', 'CEA', 'EpCAM', 'DLL3', 'SSTR2', 'Integrin',
+    // 信号通路 / 激酶
+    'BTK', 'JAK', 'JAK1', 'JAK2', 'JAK3', 'TYK2', 'PI3K', 'AKT', 'mTOR', 'SHP2', 'EZH2', 'IDH1', 'IDH2', 'FLT3', 'KIT', 'ABL', 'BCR-ABL', 'PARP', 'CDK4', 'CDK6', 'CDK12', 'HDAC', 'DNMT', 'Wnt', 'Hedgehog', 'STING', 'TLR', 'NLRP3', 'Bcl-2', 'MDM2', 'p53', 'RAS', 'MYC',
+    // 代谢 / 心血管 / 慢病
+    'GLP-1', 'GLP-2', 'GIP', 'GCGR', 'PCSK9', 'ANGPTL3', 'Lp(a)', 'Factor XI', 'FXIa', 'P2Y12', 'SGLT2', 'DPP-4', 'PPAR', 'FXR', 'THR-β',
+    // 免疫 / 炎症
+    'TNF-α', 'IL-2', 'IL-6', 'IL-15', 'IL-17', 'IL-23', 'IgE', 'TSLP', 'S1P', 'α4β7', 'MAdCAM-1', 'TGF-β', 'C3', 'C5', 'CFB', 'CD32a', 'CD32α', 'GP120'
+  ];
+
+  // 靶点匹配的"伪命中"排除表：这些英文单词/缩写包含靶点子串，但不是靶点
+  // 例：Intelligent 含 IgE、Breakthrough 含 AKT、GRAS 含 RAS、Target 含 RET
+  var TARGET_FALSE_POSITIVE = /GRAS|Breakthrough|Intelligent|Intelligence|Target|Targeting|Targeted|Retention|Return|Returns|Retail|Retina|Retinal|Metabolic|Metabolism|Metal|Method|Methods|Metric|Metrics|Signal|Signaling|Digital|Digitalization|Kit\b|Kits\b|Ablation|Ablation|C3\s*(?:转化酶|补体)?(?:$|[^0-9])/i;
+
   // 抽取核心靶点：按出现频次排序，取最高频靶点
   function extractTarget(text) {
-    var TARGETS = ['PD-1', 'PD-L1', 'BTK', 'HER2', 'EGFR', 'CLDN18.2', 'TROP2', 'CD19', 'CD20', 'CD22', 'CD30', 'CD99', 'BCMA', 'VEGF', 'ALK', 'FGFR', 'TRK', 'MSLN', 'Mesothelin', 'GPR87', 'CA9', 'GP120', 'CD32a', 'CD32α'];
     var best = null, bestCount = 0;
-    TARGETS.forEach(function (t) {
-      var re = new RegExp(t.replace(/[.\-]/g, '\\$&'), 'gi');
+    TARGET_DICT.forEach(function (t) {
+      // 转义正则特殊字符
+      var esc = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // 左右边界：前后不能紧邻英文字母，避免 "Intelligent" 命中 IgE、"Breakthrough" 命中 AKT
+      // 右边界额外排除数字，避免 CD3 命中 CD30、C3 命中 C30
+      var re = new RegExp('(?<![A-Za-z])' + esc + '(?![A-Za-z0-9])', 'gi');
       var m = text.match(re);
-      var c = m ? m.length : 0;
-      if (c > bestCount) { bestCount = c; best = t; }
+      if (!m) return;
+      // 过滤伪命中：检查每个命中位置的上下文
+      var valid = 0;
+      var re2 = new RegExp('(?<![A-Za-z])' + esc + '(?![A-Za-z0-9])', 'gi'), mm;
+      while ((mm = re2.exec(text)) !== null) {
+        var ctx = text.slice(Math.max(0, mm.index - 12), mm.index + t.length + 12);
+        if (TARGET_FALSE_POSITIVE.test(ctx)) continue;
+        valid++;
+      }
+      if (valid > bestCount) { bestCount = valid; best = t; }
     });
     return best || '未识别';
   }
+
+
 
   /* ----------------------------------------------------------
      核心：分析 BP 文本
@@ -347,14 +410,27 @@
     });
 
     // ---------- 2. 抽取关键字段 ----------
+    var amount = extractAmount(text, ['亿元', '万元']);
+    var valuation = extractValuation(text);
+    var valuationBasis = valuation ? '原文披露' : null;
+    // 兜底：原文未披露估值时，用"融资额 ÷ 出让股权比例"反推投后估值
+    if (!valuation) {
+      var inferred = inferValuation(text, amount);
+      if (inferred) {
+        valuation = inferred.value;
+        valuationBasis = inferred.basis;
+      }
+    }
     var extracted = {
       companyName: extractCompany(text),
-      financingAmount: extractAmount(text, ['亿元', '万元']),
-      valuation: extractValuation(text),
+      financingAmount: amount,
+      valuation: valuation,
+      valuationBasis: valuationBasis,
       stage: extractStage(text),
       target: extractTarget(text),
       chars: len
     };
+
 
     // ---------- 3. 四维打分 ----------
     var scores = {};
