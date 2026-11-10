@@ -530,7 +530,10 @@ body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Mi
 </div>
 
 <script src="assets/common.js"></script>
+<!-- 估值引擎必须先于 bp-engine 加载：bp-engine 在无原文估值时依赖它做多因子兜底 -->
+<script src="assets/valuation-engine.js"></script>
 <script src="assets/bp-engine.js"></script>
+
 <script>
 // ============ 全局状态 ============
 let currentDemo = 'demo1';

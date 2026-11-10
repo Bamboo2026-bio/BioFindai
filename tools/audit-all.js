@@ -3,8 +3,10 @@ const fs = require('fs');
 const path = require('path');
 
 global.window = {};
+require('../assets/valuation-engine.js');
 require('../assets/bp-engine.js');
 const BPEngine = global.window.BPEngine;
+
 
 const dir = path.join(__dirname, '..', 'BioTech案例', '_extracted');
 const files = fs.readdirSync(dir).filter(f => f.endsWith('.txt')).sort();
@@ -25,7 +27,11 @@ files.forEach(f => {
     amount: r.extracted.financingAmount,
     valuation: r.extracted.valuation,
     valuationBasis: r.extracted.valuationBasis,
+    valuationMethod: r.extracted.valuationMethod,
+    valuationConfidence: r.extracted.valuationConfidence,
+    valuationRange: r.extracted.valuationRange,
     scores: r.scores,
+
     total: r.total,
     grade: r.grade
   });
@@ -45,7 +51,20 @@ rows.forEach(r => {
     r.total + '(' + r.grade + ')'
   );
 });
-console.log('注：估值带 * 表示由"融资额÷出让股权比例"反推，非原文披露');
+console.log('注：估值带 * 表示非原文披露（股权比例反推或多因子模型估算）');
+
+console.log('\n=== 估值系统明细 ===');
+rows.forEach(r => {
+  const range = r.valuationRange ? ` [区间 ${r.valuationRange.low} ~ ${r.valuationRange.high}]` : '';
+  console.log(
+    r.file.slice(0, 26).padEnd(28) +
+    String(r.valuation || '-').padEnd(10) +
+    String(r.valuationMethod || '-').padEnd(16) +
+    '置信度:' + String(r.valuationConfidence || '-').padEnd(5) +
+    range
+  );
+});
+
 
 console.log('\n=== 公司名抽取 ===');
 rows.forEach(r => console.log(r.file.slice(0, 30).padEnd(32) + '→ ' + r.company));

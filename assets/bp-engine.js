@@ -303,9 +303,52 @@
     // 剔除带年份的"2022年提交NDA""2026 Q4 NDA申报"等时间点描述（历史里程碑或未来计划，非当前状态）
     cleaned = cleaned.replace(/[0-9]{4}\s*年?[^。\n]{0,6}?(?:提交|递交|申报|完成)?[^。\n]{0,4}?(?:NDA|上市申请)/g, '');
     cleaned = cleaned.replace(/[0-9]{4}\s*[Qq][1-4][^。\n]{0,10}?(?:NDA|上市申请)/g, '');
+    // 剔除行业/竞品/全球背景描述中的阶段表述（如"全球溶瘤病毒领域临床III期项目数量已超过90项"）
+    // 这类表述描述的是行业整体，而非本企业管线所处阶段
+    cleaned = cleaned.replace(/(?:全球|国内|国际|行业|领域|市场|竞品|同类|其他公司|已有|目前已有)[^。\n]{0,20}?(?:临床)?(?:I{1,3}|1|2|3)\s*期[^。\n]{0,20}?(?:项目|产品|药物|管线|数量|超过|已有|共)/g, '');
+    cleaned = cleaned.replace(/(?:临床)?(?:I{1,3}|1|2|3)\s*期[^。\n]{0,10}?(?:项目|产品|药物|管线)[^。\n]{0,10}?(?:数量|超过|已有|共|达)[^。\n]{0,10}/g, '');
+    // 剔除"行业背景/发展现状/竞争格局"章节中的阶段统计（如"临床I-III期：国际OV>90；国内OV>20"）
+    cleaned = cleaned.replace(/(?:行业背景|发展现状|竞争格局|市场分析|行业分析|背景分析)[^。\n]{0,30}?(?:临床)?(?:I{1,3}|1|2|3)\s*期[^。\n]{0,30}/g, '');
+    // 剔除区间式阶段表述（如"临床I-III期""II-III期临床""II/III期临床试验"），这类多为行业统计或规划区间，非当前阶段
+    cleaned = cleaned.replace(/(?:临床)?(?:I{1,3}|1|2|3)\s*[-~至\/]\s*(?:I{1,3}|1|2|3)\s*期[^。\n]{0,20}/g, '');
+    // 剔除"XX期临床试验的XX药物/产品"这类行业统计句式（如"II/III期临床试验的溶瘤病毒：单药药效…"）
+    cleaned = cleaned.replace(/(?:I{1,3}|1|2|3)\s*期[^。\n]{0,6}?临床试验的[^。\n]{0,20}/g, '');
+    // 剔除"III期临床验证生存获益""II期临床（单药+联合）"等未来计划句式（无"已/正在/处于"等当前状态词）
+    cleaned = cleaned.replace(/(?:I{1,3}|1|2|3)\s*期临床(?:验证|试验|研究|开发|推进|开展)[^。\n]{0,25}/g, '');
+    // 剔除"关键里程碑/里程碑规划"章节中的阶段表述（如"完成I期临床试验全部工作，确认II期推荐剂量"）
+    // 里程碑描述的是未来要达成的目标，不代表当前所处阶段
+    cleaned = cleaned.replace(/(?:关键里程碑|里程碑|发展规划|路线图|roadmap)[^。\n]{0,20}?(?:完成|实现|达成|推进)[^。\n]{0,20}?(?:I{1,3}|1|2|3)\s*期[^。\n]{0,30}/gi, '');
+    // 剔除"完成XX期临床试验""确认XX期推荐剂量""开展关键性XX期临床"等目标句式
+    cleaned = cleaned.replace(/(?:完成|确认|开展|推进|启动|进入)[^。\n]{0,10}?(?:I{1,3}|1|2|3)\s*期(?:临床)?[^。\n]{0,20}/g, '');
+    // 剔除竞品对标表格行（如"亦诺微 | MVR-T3011 | 临床II期 | 8-12亿 | 传统基因删除"）
+    // 判定：同一行含"|"分隔符且出现阶段表述，属于竞品/对标数据，非本企业阶段
+    cleaned = cleaned.split('\n').filter(function (line) {
+      if (line.indexOf('|') === -1) return true;
+      return !/(?:I{1,3}|1|2|3)\s*期/.test(line);
+    }).join('\n');
+    // 剔除退出路径/资本化规划中的阶段表述（如"依托II期临床核心数据，冲刺科创板""II期数据读出后启动上市申报"）
+    cleaned = cleaned.replace(/(?:退出路径|退出方式|资本化|上市退出|IPO退出|并购退出|价值跃升)[^。\n]{0,30}?(?:I{1,3}|1|2|3)\s*期[^。\n]{0,30}/g, '');
+    cleaned = cleaned.replace(/(?:I{1,3}|1|2|3)\s*期[^。\n]{0,10}?(?:数据读出|数据披露)[^。\n]{0,20}/g, '');
+    // 剔除"依托II期临床核心数据，冲刺科创板/港股18A"等退出路径句式
+    cleaned = cleaned.replace(/(?:依托|基于|凭借)[^。\n]{0,10}?(?:I{1,3}|1|2|3)\s*期[^。\n]{0,20}?(?:冲刺|申报|上市|退出|并购)[^。\n]{0,20}/g, '');
+
+    // 剔除"为XX期推荐剂量（RP2D）选择提供数据支撑"等方案设计描述
+    cleaned = cleaned.replace(/(?:为|用于)[^。\n]{0,10}?(?:I{1,3}|1|2|3)\s*期[^。\n]{0,20}?(?:提供|选择|支撑|准备)[^。\n]{0,15}/g, '');
+
+
+
+    // 剔除未来开发计划中的阶段表述（如"2029-2032年完成II-III期临床""H2启动I期临床"）
+    cleaned = cleaned.replace(/[0-9]{4}\s*[-~至]\s*[0-9]{4}\s*年[^。\n]{0,20}?(?:I{1,3}|1|2|3)\s*期[^。\n]{0,20}/g, '');
+    cleaned = cleaned.replace(/(?:H[12]|第[一二三四]季度|Q[1-4])[^。\n]{0,10}?(?:启动|开展|完成)[^。\n]{0,10}?(?:I{1,3}|1|2|3)\s*期[^。\n]{0,20}/g, '');
+    cleaned = cleaned.replace(/(?:分阶段开发计划|开发计划|研发计划|里程碑规划)[^。\n]{0,40}?(?:I{1,3}|1|2|3)\s*期[^。\n]{0,30}/g, '');
+
+
     var STAGES = [
       // 已上市：药品获批上市，或医疗器械取得注册证/获证（NMPA/FDA/CE 等）
       { re: /(?:公司|产品|管线|核心产品|本品|该药)[^。\n]{0,10}(?:已上市|已获批上市|获批上市)|(?:已上市|获批上市)[^。\n]{0,6}(?:销售|商业化)/, name: '已上市' },
+      // 已获批适应症（含附条件批准）：药品已获 NMPA 批准上市，如"已获批适应症（附条件批准）"
+      { re: /已获批适应症|获批适应症|附条件批准上市|附条件获批|已获(?:国家)?(?:药监|NMPA)[^。\n]{0,10}?批准/, name: '已上市' },
+
       // 医疗器械：取得注册证/获证（如"NMPA二类医疗器械注册证""7款获证""全线产品均已获得注册证"）
       // 注意：必须明确为"注册证/获证"，不能是"批件/资格/孤儿药认证"等临床批文或药品资格
       { re: /(?:获得|取得|已获|均已获|获批)[^。\n]{0,12}?注册证|(?:NMPA|FDA|CE|MDA)[^。\n]{0,6}?注册证|[0-9]+\s*款[^。\n]{0,6}?获证|获证[^。\n]{0,6}?产品/, name: '已获证' },
@@ -411,25 +454,51 @@
 
     // ---------- 2. 抽取关键字段 ----------
     var amount = extractAmount(text, ['亿元', '万元']);
-    var valuation = extractValuation(text);
-    var valuationBasis = valuation ? '原文披露' : null;
-    // 兜底：原文未披露估值时，用"融资额 ÷ 出让股权比例"反推投后估值
-    if (!valuation) {
-      var inferred = inferValuation(text, amount);
-      if (inferred) {
-        valuation = inferred.value;
-        valuationBasis = inferred.basis;
+    var stage = extractStage(text);
+    var disclosed = extractValuation(text);
+    var inferred = disclosed ? null : inferValuation(text, amount);
+
+    // 估值系统：原文披露 > 股权比例反推 > 多因子模型（保证任何 BP 都有估值评估）
+    var valuation = disclosed, valuationBasis = disclosed ? '原文披露' : null;
+    var valuationConfidence = disclosed ? '高' : null;
+    var valuationMethod = disclosed ? 'BP 原文披露' : null;
+    var valuationRange = null, valuationDetail = null;
+
+    if (!valuation && inferred) {
+      valuation = inferred.value;
+      valuationBasis = inferred.basis;
+      valuationConfidence = '中高';
+      valuationMethod = '股权比例反推';
+    }
+    // 兜底：多因子估值模型（即使无任何估值信息也能给出评估）
+    if (!valuation && global.ValuationEngine) {
+      var ve = global.ValuationEngine.estimate({
+        text: text, stage: stage, hits: hits, amount: amount
+      });
+      if (ve) {
+        valuation = ve.value;
+        valuationBasis = ve.basis;
+        valuationConfidence = ve.confidence;
+        valuationMethod = ve.method;
+        valuationRange = { low: ve.low, high: ve.high };
+        valuationDetail = ve.factors;
       }
     }
+
     var extracted = {
       companyName: extractCompany(text),
       financingAmount: amount,
       valuation: valuation,
       valuationBasis: valuationBasis,
-      stage: extractStage(text),
+      valuationConfidence: valuationConfidence,
+      valuationMethod: valuationMethod,
+      valuationRange: valuationRange,
+      valuationDetail: valuationDetail,
+      stage: stage,
       target: extractTarget(text),
       chars: len
     };
+
 
 
     // ---------- 3. 四维打分 ----------

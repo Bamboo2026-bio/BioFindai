@@ -3,8 +3,11 @@ const fs = require('fs');
 const path = require('path');
 
 global.window = {};
+// 注意：必须先加载 valuation-engine，bp-engine 依赖它做估值兜底
+require('./assets/valuation-engine.js');
 require('./assets/bp-engine.js');
 const BPEngine = global.window.BPEngine;
+
 
 // 读取已提取的文本（由 read_file 工具提取后手动保存，或直接读取 txt）
 const cases = [
