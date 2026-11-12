@@ -14,6 +14,18 @@ const files = fs.readdirSync(dir).filter(f => f.endsWith('.txt')).sort();
 // 非药械赛道：本身不存在"靶点"概念，不应报靶点异常
 const NON_TARGET_STAGES = ['非药械·食品', '非药械·材料', '非药械·消费品'];
 
+// 靶点"不适用"：器械/平台型或非药械赛道，本身不存在药物靶点，属正常结果
+const isTargetNA = t => typeof t === 'string' && t.indexOf('不适用') === 0;
+
+// 融资额"未披露"判定：BP 全文确实没有任何"本轮融资需求"语境，属正常结果而非识别失败
+// 注意：仅出现"完成种子轮/天使轮融资"等历史里程碑，不代表披露了本轮金额，仍应视为未披露
+const FINANCING_NEED_CTX = /融资需求|融资金额|拟融资|本轮融资|融资规模|募集资金|融资额|融资计划|募资|投资额|本轮拟|拟募集/;
+function isAmountUndisclosed(text) {
+  return !FINANCING_NEED_CTX.test(text);
+}
+
+
+
 const rows = [];
 files.forEach(f => {
   const text = fs.readFileSync(path.join(dir, f), 'utf8');
@@ -31,6 +43,8 @@ files.forEach(f => {
     valuationConfidence: r.extracted.valuationConfidence,
     valuationRange: r.extracted.valuationRange,
     scores: r.scores,
+    amountUndisclosed: isAmountUndisclosed(text),
+
 
     total: r.total,
     grade: r.grade
@@ -76,8 +90,11 @@ rows.forEach(r => {
   const issues = [];
   const isNonPharma = NON_TARGET_STAGES.includes(r.stage);
   if (r.stage === '未识别') issues.push('阶段未识别');
+  // 靶点：非药械赛道 / 器械平台型（"不适用"）属正常结果，不计为异常
   if (r.target === '未识别' && !isNonPharma) issues.push('靶点未识别');
-  if (!r.amount) issues.push('融资额未识别');
+  // 融资额：BP 全文无融资语境 → "未披露"（正常）；有融资语境但未抽到 → "识别失败"（异常）
+  if (!r.amount) issues.push(r.amountUndisclosed ? '融资额未披露' : '融资额识别失败');
+
   if (!r.valuation) issues.push('估值未识别');
   if (r.company === '未识别' || r.company.length < 4) issues.push('公司名异常');
   if (issues.length) { issueCount++; console.log(r.file.slice(0, 30).padEnd(32) + '⚠ ' + issues.join('、')); }

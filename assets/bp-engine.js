@@ -452,6 +452,10 @@
   // （如 CAR-T BP 中的"化工级原料"、康复器械 BP 中的"康养"）
   var NON_PHARMA_TRACK_RE = /药食同源|功能性食品|保健食品|膳食补充|食品生产许可|SC证|底涂剂|密封胶|聚合物|涂料|胶粘剂|健康饮品|茶饮|品牌口号/;
 
+  // 器械/平台型公司：本身不存在"药物靶点"概念（如康复机器人、影像设备、器官灌注设备、制剂平台）
+  // 判定依据为"强信号"技术描述，而非泛词，避免误伤药企
+  var DEVICE_PLATFORM_RE = /脑机接口|康复机器人|外骨骼|医疗器械注册证|二类医疗器械|三类医疗器械|阻抗断层|电阻抗断层|EIT|EIM|机械灌注|器官灌注|灌注设备|冻干闪释|制剂平台|影像设备|检测设备|诊断设备|手术机器人|监护仪|内窥镜/;
+
   // 抽取核心靶点：按出现频次排序，取最高频靶点
   function extractTarget(text) {
     // 非药械赛道直接返回"不适用"，避免把营养成分机理误判为药物靶点
@@ -459,6 +463,7 @@
     if (NON_PHARMA_TRACK_RE.test(text) && !/(?:CD19|CD30|PD-1|PD-L1|HER2|BCMA|PCSK9|BTK|EGFR|CLDN18\.2)/i.test(text)) {
       return '不适用（非药械赛道）';
     }
+
 
 
     var best = null, bestCount = 0;
@@ -485,8 +490,12 @@
 
       if (valid > bestCount) { bestCount = valid; best = t; }
     });
-    return best || '未识别';
+    if (best) return best;
+    // 器械/平台型公司：本身不存在药物靶点，返回"不适用"而非"未识别"
+    if (DEVICE_PLATFORM_RE.test(text)) return '不适用（器械/平台型）';
+    return '未识别';
   }
+
 
 
 
