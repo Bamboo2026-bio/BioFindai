@@ -405,17 +405,65 @@
     // 代谢 / 心血管 / 慢病
     'GLP-1', 'GLP-2', 'GIP', 'GCGR', 'PCSK9', 'ANGPTL3', 'Lp(a)', 'Factor XI', 'FXIa', 'P2Y12', 'SGLT2', 'DPP-4', 'PPAR', 'FXR', 'THR-β',
     // 免疫 / 炎症
-    'TNF-α', 'IL-2', 'IL-6', 'IL-15', 'IL-17', 'IL-23', 'IgE', 'TSLP', 'S1P', 'α4β7', 'MAdCAM-1', 'TGF-β', 'C3', 'C5', 'CFB', 'CD32a', 'CD32α', 'GP120'
+    'TNF-α', 'IL-2', 'IL-6', 'IL-15', 'IL-17', 'IL-23', 'IgE', 'TSLP', 'S1P', 'α4β7', 'MAdCAM-1', 'TGF-β', 'C3', 'C5', 'CFB', 'CD32a', 'CD32α', 'GP120',
+    // 生殖 / 内分泌 / 代谢标志物
+    'POI', 'AMH', 'FSH', 'LH', 'E2', 'AMHR2', 'BMP15', 'GDF9', 'INSR', 'IGF-1R', 'GCGR', 'GIPR', 'MC4R', 'FGF21', 'FGF23', 'Klotho',
+    // 神经 / 精神
+    'Aβ', 'Tau', 'α-synuclein', 'BDNF', 'NGF', 'TrkB', 'NMDA', 'AMPA', 'GABA-A', '5-HT', 'DRD2', 'M1', 'M4', 'α7nAChR',
+    // 抗感染 / 疫苗（仅保留明确作为药物靶点/抗原的缩写；HBV/HCV/HIV 等病原体名
+    // 在 BP 中多为流行病学描述，不纳入靶点词典，避免"全球慢性HBV感染者2.4亿"误判）
+    'Spike', 'RBD', 'RSV-F', 'gD', 'L1',
+    // 眼科 / 其他
+    'VEGF-A', 'VEGFR2', 'CFH', 'C3b', 'RPE65', 'CEP290', 'RHO', 'ABCA4',
+    // 活性氧 / 光动力 / 物理作用机制（非蛋白靶点，但属于核心技术机制）
+    'ROS', 'PDT', '光敏剂', '单线态氧',
+    // 气体标志物（呼气诊断类 IVD）
+    '氢气', '甲烷', '硫化氢', '一氧化氮', 'CH4', 'H2S'
   ];
+
+  // 仅在"技术/机制"语境下才计为靶点的词：这些词在 BP 中常出现在
+  // 流行病学、营养成分、时间表述等非靶点语境（如"2029年H2启动I期""n-HA再矿化牙膏"）
+  var TARGET_CONTEXT_REQUIRED = {
+    'ROS': /(?:活性氧|氧化应激|清除|产生|诱导|光动力|光敏|单线态氧|自由基)/,
+    'PDT': /(?:光动力|光敏剂|治疗|疗法|机制)/,
+    'H2S': /(?:硫化氢|气体|呼气|标志物|检测)/,
+    'CH4': /(?:甲烷|气体|呼气|标志物|检测)/,
+    'NO': /(?:一氧化氮|气体|呼气|标志物|信号|通路)/,
+    'L1': /(?:HPV|病毒|疫苗|抗原|蛋白)/,
+    'gD': /(?:病毒|疫苗|抗原|蛋白|HSV)/,
+    'RHO': /(?:视紫红质|基因|突变|视网膜)/,
+    'M1': /(?:巨噬细胞|受体|亚型|毒蕈碱)/,
+    'M4': /(?:受体|亚型|毒蕈碱)/,
+    'E2': /(?:雌二醇|激素|受体)/,
+    'LH': /(?:促黄体|激素|受体)/,
+    'FSH': /(?:促卵泡|激素|受体)/,
+    'NA': /(?:神经氨酸酶|抗原|疫苗|流感)/
+  };
+
+
 
   // 靶点匹配的"伪命中"排除表：这些英文单词/缩写包含靶点子串，但不是靶点
   // 例：Intelligent 含 IgE、Breakthrough 含 AKT、GRAS 含 RAS、Target 含 RET
   var TARGET_FALSE_POSITIVE = /GRAS|Breakthrough|Intelligent|Intelligence|Target|Targeting|Targeted|Retention|Return|Returns|Retail|Retina|Retinal|Metabolic|Metabolism|Metal|Method|Methods|Metric|Metrics|Signal|Signaling|Digital|Digitalization|Kit\b|Kits\b|Ablation|Ablation|C3\s*(?:转化酶|补体)?(?:$|[^0-9])/i;
 
+  // 非药械赛道（食品/材料/消费品）通常不存在药物靶点，其文本中的"活性氧""抗氧化"
+  // 等属于营养成分机理描述，不应被识别为靶点
+  // 注意：必须使用"强信号"词，避免"化工""康养""产品手册"等泛词把药企 BP 误判为非药械
+  // （如 CAR-T BP 中的"化工级原料"、康复器械 BP 中的"康养"）
+  var NON_PHARMA_TRACK_RE = /药食同源|功能性食品|保健食品|膳食补充|食品生产许可|SC证|底涂剂|密封胶|聚合物|涂料|胶粘剂|健康饮品|茶饮|品牌口号/;
+
   // 抽取核心靶点：按出现频次排序，取最高频靶点
   function extractTarget(text) {
+    // 非药械赛道直接返回"不适用"，避免把营养成分机理误判为药物靶点
+    // 但若文本中已出现明确的药物靶点（如 CD19/PD-1），仍以靶点为准
+    if (NON_PHARMA_TRACK_RE.test(text) && !/(?:CD19|CD30|PD-1|PD-L1|HER2|BCMA|PCSK9|BTK|EGFR|CLDN18\.2)/i.test(text)) {
+      return '不适用（非药械赛道）';
+    }
+
+
     var best = null, bestCount = 0;
     TARGET_DICT.forEach(function (t) {
+
       // 转义正则特殊字符
       var esc = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       // 左右边界：前后不能紧邻英文字母，避免 "Intelligent" 命中 IgE、"Breakthrough" 命中 AKT
@@ -426,11 +474,15 @@
       // 过滤伪命中：检查每个命中位置的上下文
       var valid = 0;
       var re2 = new RegExp('(?<![A-Za-z])' + esc + '(?![A-Za-z0-9])', 'gi'), mm;
+      var ctxRule = TARGET_CONTEXT_REQUIRED[t] || TARGET_CONTEXT_REQUIRED[t.toUpperCase()];
       while ((mm = re2.exec(text)) !== null) {
         var ctx = text.slice(Math.max(0, mm.index - 12), mm.index + t.length + 12);
         if (TARGET_FALSE_POSITIVE.test(ctx)) continue;
+        // 语境约束：ROS/H2S/NO 等易混淆词必须出现在技术/机制语境中
+        if (ctxRule && !ctxRule.test(ctx)) continue;
         valid++;
       }
+
       if (valid > bestCount) { bestCount = valid; best = t; }
     });
     return best || '未识别';
